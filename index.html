@@ -140,14 +140,16 @@
   .today-head{
     display:flex; justify-content:space-between; align-items:center;
     background:var(--ink); color:var(--bg); border-radius:18px; padding:14px 16px; margin-bottom:14px;
+    box-shadow:var(--card-shadow);
   }
   .today-date{ font-weight:800; font-size:16px; }
   .today-type{ font-family:'JetBrains Mono','SF Mono',monospace; font-size:11px; opacity:0.75; }
 
   .day-off-btn{
-    display:block; width:100%; appearance:none; border:none; cursor:pointer;
+    display:block; width:100%; appearance:none; cursor:pointer;
     background:var(--card); color:var(--muted); font-family:inherit; font-size:12px; font-weight:600;
     padding:8px 10px; border-radius:12px; margin-bottom:10px; text-align:center;
+    border:1px solid var(--line); box-shadow:var(--card-shadow);
     transition: background .15s ease, color .15s ease;
   }
   .day-off-btn.active{ background:var(--banner-info-bg); color:var(--accent); }
@@ -162,6 +164,7 @@
   .week-day{
     flex:1; min-width:62px; background:var(--card); border-radius:14px; padding:10px 4px 8px;
     text-align:center; display:flex; flex-direction:column; align-items:center; gap:3px;
+    border:1px solid var(--line); box-shadow:var(--card-shadow);
   }
   .week-day.today{ background:var(--ink); }
   .week-day.dayoff{ opacity:0.6; }
@@ -189,6 +192,7 @@
   .check-item{
     display:flex; align-items:center; gap:12px;
     background:var(--card); border-radius:14px; padding:12px 14px;
+    box-shadow:var(--card-shadow);
     border-left:3px solid var(--cat-color);
   }
   .check-item.done{ opacity:0.5; }
@@ -219,11 +223,17 @@
   .month-selector .label{ font-weight:700; font-size:16px; min-width:110px; text-align:center; font-variant-numeric:tabular-nums; }
 
   .stat-cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
-  .stat-card{ background:var(--card); border-radius:14px; padding:14px; text-align:center; }
+  .stat-card{
+    background:var(--card); border-radius:14px; padding:14px; text-align:center;
+    border:1px solid var(--line); box-shadow:var(--card-shadow);
+  }
   .stat-card .num{ font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
   .stat-card .label{ font-size:11px; color:var(--muted); margin-top:2px; }
 
-  .chart-card{ background:var(--card); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .chart-card{
+    background:var(--card); border-radius:14px; padding:16px; margin-bottom:14px;
+    border:1px solid var(--line); box-shadow:var(--card-shadow);
+  }
   .chart-card h3{ margin:0 0 12px; font-size:14px; font-weight:600; }
   .chart-card canvas{ display:block; width:100%; }
 
