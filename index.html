@@ -225,6 +225,13 @@
     font-family:inherit; font-size:12.5px; padding:8px 10px; resize:vertical; min-height:36px;
   }
   .note-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .topic-hint{
+    flex-basis:100%; width:100%; margin-top:2px;
+    display:flex; gap:6px; align-items:flex-start;
+    background:var(--banner-info-bg); color:var(--accent);
+    border-radius:10px; padding:8px 10px; font-size:12.5px; line-height:1.4;
+  }
+  .topic-hint b{ font-weight:700; }
 
   /* ---------- 월간 리포트 ---------- */
   .month-selector{
@@ -355,11 +362,37 @@ const CATS = [
   { key:'ritual',   name:'아침 리추얼',      desc:'감사일기 + 아침일기 · 07:00–07:10' },
   { key:'study',    name:'독서/자격증/영어', desc:'07:10–08:00' },
   { key:'exercise', name:'운동',             desc:'본인 운동', hasNote:true, notePlaceholder:'오늘 어떤 운동 했는지 적어보세요 (예: 스쿼트 3세트, 러닝 20분)' },
-  { key:'content',  name:'콘텐츠 제작',      desc:'인스타/블로그' },
+  { key:'content',  name:'콘텐츠 제작',      desc:'인스타/블로그', topicBank:true },
   { key:'chore',    name:'집안일',           desc:'장보기·밥·청소 · 20:00–22:00' },
 ];
 // 카테고리별 실제 색상값 (CSS 커스텀 프로퍼티와 1:1로 대응, 캔버스 차트에서 재사용)
 const CAT_COLOR_VAR = { ritual:'--ritual', study:'--study', exercise:'--exercise', content:'--content', chore:'--chore' };
+
+// 블로그/인스타 콘텐츠 주제 뱅크 — 가동성(관절 가동성 향상) 중심 + 러닝 + 스트렝스(근력) 운동을 섞어서 순환.
+// 날짜(연중 일수)를 기준으로 매일 결정적으로 하나씩 뽑아 보여준다 — 같은 날엔 항상 같은 주제가 나온다.
+const CONTENT_TOPICS = [
+  '고관절 가동성 높이는 스트레칭 루틴',
+  '발목 가동성이 무릎 통증에 미치는 영향',
+  '러닝 전 꼭 필요한 동적 워밍업 루틴',
+  '흉추(등 윗부분) 가동성 늘리는 상체 루틴',
+  '스쿼트 전에 체크하면 좋은 가동성 포인트',
+  '러닝 후 회복을 위한 가동성 루틴',
+  '어깨 가동성과 자세의 관계',
+  '스트렝스 훈련 전 준비운동, 뭐가 다를까',
+  '무릎 부담 줄여주는 가동성 운동',
+  '러닝 페이스 올리기 전에 점검할 발목·고관절',
+  '가동성과 근력, 둘 다 챙기는 밸런스 루틴',
+  '골반 가동성 개선하는 루틴',
+  '러닝 부상 예방을 위한 가동성 체크리스트',
+  '5분이면 끝나는 전신 가동성 워밍업',
+];
+function dayOfYear(d){
+  const start = new Date(d.getFullYear(), 0, 0);
+  return Math.floor((d - start) / 86400000);
+}
+function topicForDate(d){
+  return CONTENT_TOPICS[dayOfYear(d) % CONTENT_TOPICS.length];
+}
 
 // Q1 (중요+긴급) 체크 항목 — 근무시간 안에서 매일 자동 처리되는 업무. 개인 습관(CATS)과 별도로 관리되며
 // 월간 리포트/연속기록 집계에는 포함하지 않고 오늘 체크에서만 확인용으로 체크한다.
@@ -640,6 +673,12 @@ async function renderToday(){
       ta.dataset.notekey = c.key;
       ta.value = log[c.key+'Note'] || '';
       item.appendChild(ta);
+    }
+    if(c.topicBank && !isContentOff){
+      const hint = document.createElement('div');
+      hint.className = 'topic-hint';
+      hint.innerHTML = `<span>💡</span><span>오늘 ${cLabel} 주제: <b>${topicForDate(today)}</b></span>`;
+      item.appendChild(hint);
     }
     list.appendChild(item);
   });
