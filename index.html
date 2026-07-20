@@ -175,8 +175,11 @@
     flex:1; min-width:62px; background:var(--card); border-radius:14px; padding:10px 4px 8px;
     text-align:center; display:flex; flex-direction:column; align-items:center; gap:3px;
     border:1px solid var(--line); box-shadow:var(--card-shadow-sm);
-    position:relative;
+    position:relative; cursor:pointer;
+    transition: transform .12s ease;
   }
+  .week-day:hover{ transform:translateY(-1px); }
+  .week-day:active{ transform:translateY(0); }
   .week-day.today{ background:var(--ink); }
   .week-day.dayoff{ opacity:0.6; }
   .week-day .wd{ font-size:11px; color:var(--muted); font-weight:600; }
@@ -237,6 +240,35 @@
     border-radius:10px; padding:8px 10px; font-size:12.5px; line-height:1.4;
   }
   .topic-hint b{ font-weight:700; }
+
+  /* ---------- 요일 상세 모달 ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.5);
+    display:none; align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .modal-overlay.active{ display:flex; }
+  .modal-card{
+    position:relative; width:100%; max-width:360px; max-height:80vh; overflow-y:auto;
+    background:var(--card); color:var(--ink); border-radius:20px; padding:22px 20px 20px;
+    border:1px solid var(--line); box-shadow:var(--card-shadow);
+  }
+  .modal-close{
+    position:absolute; top:12px; right:12px; width:28px; height:28px; border-radius:50%;
+    border:none; background:rgba(127,127,127,0.15); color:var(--ink); font-size:13px; cursor:pointer;
+  }
+  .modal-content h3{ margin:0 0 4px; font-size:17px; font-weight:800; }
+  .modal-sub{ font-size:12px; color:var(--muted); margin-bottom:16px; }
+  .modal-section{ margin-bottom:14px; }
+  .modal-section h4{
+    margin:0 0 6px; font-size:11px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.05em;
+  }
+  .modal-item{ display:flex; align-items:center; gap:8px; font-size:13px; padding:4px 0; }
+  .modal-item .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .modal-item .dot.on{ background:var(--good); }
+  .modal-item .dot.off{ background:rgba(127,127,127,0.3); }
+  .modal-note{ font-size:12px; color:var(--muted); margin:1px 0 4px 16px; }
+  .modal-empty{ font-size:13px; color:var(--muted); }
 
   /* ---------- 월간 리포트 ---------- */
   .month-selector{
@@ -360,6 +392,13 @@
   <footer class="note">기록은 이 브라우저에만 저장돼요 · 매일 체크만 해도 데이터가 쌓여요</footer>
 </div>
 
+<div class="modal-overlay" id="day-modal-overlay">
+  <div class="modal-card">
+    <button class="modal-close" id="day-modal-close" aria-label="닫기">✕</button>
+    <div id="day-modal-content"></div>
+  </div>
+</div>
+
 <script>
 const FONT_STACK = "'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif";
 
@@ -404,7 +443,7 @@ function topicForDate(d){
 // onlyDay가 있으면 해당 요일(getDay() 기준, 5=금요일)에만 노출된다.
 const Q1_TASKS = [
   { key:'q1_lesson',     name:'레슨 진행 / 레슨준비' },
-  { key:'q1_exlog',      name:'운동일지 업데이트' },
+  { key:'q1_exlog',      name:'운동일지 업데이트', hasNote:true, notePlaceholder:'오늘 누구 운동일지 업데이트했는지 적어보세요 (예: 오은숙, 김문진)' },
   { key:'q1_ot',         name:'OT 회원 수업',         onlyDay:5 },
   { key:'q1_endcontact', name:'종료(예정)회원 연락', onlyDay:5 },
 ];
@@ -520,7 +559,7 @@ function renderWeekStrip(today, todayKey, todayLog){
       `;
     }
     cells.push(`
-      <div class="week-day${isToday?' today':''}${off?' dayoff':''}">
+      <div class="week-day${isToday?' today':''}${off?' dayoff':''}" data-dk="${dk}">
         <div class="wd">${WEEKDAY_KR[d.getDay()]}</div>
         <div class="dnum">${d.getDate()}</div>
         <div class="tag">${plan.tag}</div>
@@ -529,12 +568,78 @@ function renderWeekStrip(today, todayKey, todayLog){
     `);
   }
   document.getElementById('week-strip').innerHTML = cells.join('');
+  document.querySelectorAll('#week-strip .week-day').forEach(el=>{
+    el.addEventListener('click', ()=> openDayModal(el.dataset.dk));
+  });
 
   const summaryEl = document.getElementById('week-summary');
   summaryEl.innerHTML = weekTotal
     ? `<span>이번 주 진행 <b>${weekDone}/${weekTotal}</b></span><span><b>${Math.round(weekDone/weekTotal*100)}%</b></span>`
     : `<span>이번 주 기록이 아직 없어요</span>`;
 }
+
+/* ---------------- 요일 상세 모달 ---------------- */
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function openDayModal(dk){
+  const d = keyToDate(dk);
+  const log = logCache[dk] || {};
+  const off = isDayOff(dk);
+  const cLbl = contentLabel(d);
+  const planDetail = off ? '🌴 쉬는 날 (수동 설정)' : WEEK_PLAN[d.getDay()].detail;
+  const isFuture = dk > dateKey(new Date());
+
+  let body;
+  if(isFuture){
+    body = `<div class="modal-empty">아직 오지 않은 날짜예요.</div>`;
+  } else {
+    const q1Rows = Q1_TASKS
+      .filter(t=> t.onlyDay===undefined || t.onlyDay===d.getDay())
+      .map(t=>{
+        const on = !!log[t.key];
+        const note = log[t.key+'Note'];
+        return `<div class="modal-item"><span class="dot ${on?'on':'off'}"></span><span>${t.name}</span></div>`
+          + (note ? `<div class="modal-note">📝 ${escapeHtml(note)}</div>` : '');
+      }).join('') || `<div class="modal-empty">해당 요일엔 없는 항목이에요.</div>`;
+
+    const q2Rows = CATS.map(c=>{
+      const isOff = (c.key==='content' && cLbl==='휴무');
+      if(isOff) return `<div class="modal-item"><span class="dot off"></span><span>${c.name} (휴무)</span></div>`;
+      const on = !!log[c.key];
+      const note = log[c.key+'Note'];
+      return `<div class="modal-item"><span class="dot ${on?'on':'off'}"></span><span>${c.name}</span></div>`
+        + (note ? `<div class="modal-note">📝 ${escapeHtml(note)}</div>` : '');
+    }).join('');
+
+    const {done,total} = dayCompletion(dk, d, null);
+    const rateText = total ? `${done}/${total} · ${Math.round(done/total*100)}%` : '기록 없음';
+
+    body = `
+      <div class="modal-sub">${planDetail} · ${rateText}</div>
+      <div class="modal-section"><h4>즉시 처리 · Q1</h4>${q1Rows}</div>
+      <div class="modal-section"><h4>오늘의 루틴 · Q2</h4>${q2Rows}</div>
+    `;
+  }
+
+  document.getElementById('day-modal-content').innerHTML = `
+    <div class="modal-content">
+      <h3>${d.getMonth()+1}월 ${d.getDate()}일 (${WEEKDAY_KR[d.getDay()]})</h3>
+      ${body}
+    </div>
+  `;
+  document.getElementById('day-modal-overlay').classList.add('active');
+}
+function closeDayModal(){
+  document.getElementById('day-modal-overlay').classList.remove('active');
+}
+document.getElementById('day-modal-close').addEventListener('click', closeDayModal);
+document.getElementById('day-modal-overlay').addEventListener('click', (e)=>{
+  if(e.target.id==='day-modal-overlay') closeDayModal();
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape') closeDayModal();
+});
 
 /* ---------------- 오늘 체크 렌더 ---------------- */
 async function renderToday(){
@@ -646,9 +751,18 @@ async function renderToday(){
         <div class="name">${t.name}</div>
       </label>
     `;
+    if(t.hasNote){
+      const ta = document.createElement('textarea');
+      ta.className = 'note-input';
+      ta.placeholder = t.notePlaceholder || '오늘 기록 남기기';
+      ta.dataset.notekey = t.key;
+      ta.value = log[t.key+'Note'] || '';
+      item.appendChild(ta);
+    }
     q1List.appendChild(item);
   });
   wireCheckboxes(q1List);
+  wireNoteInputs(q1List);
 
   // Q2 (오늘의 루틴) 체크리스트
   const list = document.getElementById('today-checklist');
