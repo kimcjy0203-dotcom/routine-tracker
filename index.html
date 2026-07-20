@@ -300,6 +300,11 @@
   .empty{ text-align:center; color:var(--muted); font-size:13px; padding:30px 10px; }
 
   /* ---------- 일정 ---------- */
+  .schedule-layout{ display:grid; grid-template-columns:1fr; gap:20px; align-items:start; }
+  @media (min-width:640px){
+    .schedule-layout{ grid-template-columns:1.3fr 1fr; }
+    .cal-days{ margin-bottom:0; }
+  }
   .cal-weekdays{
     display:grid; grid-template-columns:repeat(7,1fr); text-align:center;
     font-family:'JetBrains Mono','SF Mono',monospace; font-size:10.5px; letter-spacing:0.02em;
@@ -440,20 +445,24 @@
 
   <!-- 일정 -->
   <section class="panel" id="panel-schedule">
-    <div class="month-selector">
-      <button id="sched-prev-month" aria-label="이전 달">‹</button>
-      <div class="label" id="sched-month-label">-</div>
-      <button id="sched-next-month" aria-label="다음 달">›</button>
-    </div>
-    <div class="cal-weekdays" id="cal-weekdays"></div>
-    <div class="cal-days" id="cal-days"></div>
-    <div class="event-editor">
-      <div class="event-editor-date" id="event-editor-date">-</div>
-      <div class="event-input-row">
-        <input type="text" id="event-input" placeholder="일정 입력 후 추가">
-        <button id="event-add-btn">추가</button>
+    <div class="schedule-layout">
+      <div class="schedule-calendar">
+        <div class="month-selector">
+          <button id="sched-prev-month" aria-label="이전 달">‹</button>
+          <div class="label" id="sched-month-label">-</div>
+          <button id="sched-next-month" aria-label="다음 달">›</button>
+        </div>
+        <div class="cal-weekdays" id="cal-weekdays"></div>
+        <div class="cal-days" id="cal-days"></div>
       </div>
-      <ul class="event-list" id="event-list"></ul>
+      <div class="event-editor">
+        <div class="event-editor-date" id="event-editor-date">-</div>
+        <div class="event-input-row">
+          <input type="text" id="event-input" placeholder="일정 입력 후 추가">
+          <button id="event-add-btn">추가</button>
+        </div>
+        <ul class="event-list" id="event-list"></ul>
+      </div>
     </div>
   </section>
 
@@ -820,7 +829,25 @@ async function renderToday(){
   if(fridayPriority){
     const exName = CATS.find(c=>c.key==='exercise').name;
     const ctName = CATS.find(c=>c.key==='content').name;
-    banners.push(`<div class="banner info">📌 오늘은 밀린 업무 처리하는 날이에요 — 아침 루틴 마치고 출근해서 <b>${exName}</b> 먼저, 점심 이후엔 밀린 <b>${ctName}</b>(블로그·영상편집)을 몰아서 진행해요.</div>`);
+
+    // 월~목 실제 미완료 항목 집계 (쉬는 날로 표시된 날은 제외)
+    const missedByDay = [];
+    for(let i=4;i>=1;i--){
+      const d = new Date(today); d.setDate(d.getDate()-i);
+      const dk = dateKey(d);
+      if(isDayOff(dk)) continue;
+      const l = logCache[dk];
+      const missedCats = CATS.filter(c=>{
+        if(c.key==='content' && contentLabel(d)==='휴무') return false;
+        return !(l && l[c.key]);
+      }).map(c=>c.name);
+      if(missedCats.length) missedByDay.push(`<b>${WEEKDAY_KR[d.getDay()]}</b> ${missedCats.join('·')}`);
+    }
+    const missedText = missedByDay.length
+      ? ` 이번 주 못한 것 — ${missedByDay.join(', ')}.`
+      : ' 이번 주는 월~목 다 잘 챙겼어요!';
+
+    banners.push(`<div class="banner info">📌 오늘은 밀린 업무 처리하는 날이에요 — 아침 루틴 마치고 출근해서 <b>${exName}</b> 먼저, 점심 이후엔 밀린 <b>${ctName}</b>(블로그·영상편집)을 몰아서 진행해요.${missedText}</div>`);
   }
   const weak = CATS.filter(c=>{
     if(c.key==='content' && cLabel==='휴무') return false;
