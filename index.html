@@ -354,10 +354,15 @@
   .event-input-row button:hover{ opacity:0.85; }
   .event-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
   .event-list li{
-    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    display:flex; align-items:center; gap:10px;
     background:var(--bg); border-radius:12px; padding:10px 8px 10px 12px; font-size:13px;
-    border-left:3px solid var(--accent);
   }
+  .event-list li input[type=checkbox]{
+    width:18px; height:18px; flex-shrink:0; cursor:pointer;
+    accent-color: var(--accent); border-radius:5px;
+  }
+  .event-list li label{ flex:1; cursor:pointer; }
+  .event-list li.done label{ opacity:0.5; text-decoration:line-through; }
   .event-list li .del{
     appearance:none; border:none; background:none; color:var(--muted); cursor:pointer;
     font-size:13px; width:22px; height:22px; border-radius:50%; flex-shrink:0;
@@ -623,12 +628,13 @@ function saveEvents(ev){
   catch(e){ console.error('일정 저장 실패', e); }
 }
 function eventsForDate(dk){
-  return getEvents()[dk] || [];
+  const list = getEvents()[dk] || [];
+  return list.map(e => typeof e === 'string' ? { text: e, done: false } : e);
 }
 function addEvent(dk, text){
   const ev = getEvents();
   if(!ev[dk]) ev[dk] = [];
-  ev[dk].push(text);
+  ev[dk].push({ text, done: false });
   saveEvents(ev);
 }
 function removeEvent(dk, idx){
@@ -638,6 +644,15 @@ function removeEvent(dk, idx){
     if(ev[dk].length===0) delete ev[dk];
     saveEvents(ev);
   }
+}
+function toggleEvent(dk, idx){
+  const ev = getEvents();
+  const cur = ev[dk] && ev[dk][idx];
+  if(cur === undefined) return;
+  const text = typeof cur === 'string' ? cur : cur.text;
+  const done = typeof cur === 'string' ? false : !!cur.done;
+  ev[dk][idx] = { text, done: !done };
+  saveEvents(ev);
 }
 
 /* ---------------- 탭 전환 ---------------- */
@@ -823,7 +838,7 @@ async function renderToday(){
   const banners = [];
   const todayEvents = eventsForDate(key);
   if(todayEvents.length){
-    banners.push(`<div class="banner info">📅 오늘 일정: <b>${todayEvents.map(escapeHtml).join(', ')}</b></div>`);
+    banners.push(`<div class="banner info">📅 오늘 일정: <b>${todayEvents.map(e=>escapeHtml(e.text)).join(', ')}</b></div>`);
   }
   const fridayPriority = (today.getDay()===5 && !dayOff);
   if(fridayPriority){
@@ -1161,9 +1176,21 @@ function renderEventEditor(){
   const list = document.getElementById('event-list');
   const items = eventsForDate(selectedSchedDate);
   list.innerHTML = items.length
-    ? items.map((t,i)=>`<li><span>${escapeHtml(t)}</span><button class="del" data-idx="${i}" aria-label="삭제">✕</button></li>`).join('')
+    ? items.map((it,i)=>`
+        <li class="${it.done?'done':''}">
+          <input type="checkbox" ${it.done?'checked':''} data-idx="${i}" id="event-chk-${i}">
+          <label for="event-chk-${i}">${escapeHtml(it.text)}</label>
+          <button class="del" data-idx="${i}" aria-label="삭제">✕</button>
+        </li>
+      `).join('')
     : `<div class="event-empty">등록된 일정이 없어요</div>`;
 
+  list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      toggleEvent(selectedSchedDate, Number(cb.dataset.idx));
+      renderEventEditor();
+    });
+  });
   list.querySelectorAll('.del').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       removeEvent(selectedSchedDate, Number(btn.dataset.idx));
