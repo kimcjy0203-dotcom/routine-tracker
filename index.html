@@ -159,7 +159,7 @@
   .day-off-icon-btn{
     appearance:none; border:none; cursor:pointer; padding:0;
     width:26px; height:26px; border-radius:50%; flex-shrink:0;
-    background:rgba(127,127,127,0.25); color:inherit; font-size:13px;
+    background:var(--bg); color:inherit; font-size:13px;
     display:flex; align-items:center; justify-content:center;
     transition: background .15s ease;
   }
@@ -324,6 +324,7 @@
   .cal-day.empty{ background:none; border-color:transparent; cursor:default; }
   .cal-day.sun{ color:var(--warn); }
   .cal-day.sat{ color:var(--accent); }
+  .cal-day.holiday{ color:var(--warn); }
   .cal-day.today{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
   .cal-day.selected{ box-shadow:0 0 0 2px var(--accent) inset; }
   .cal-day .dot{
@@ -563,6 +564,31 @@ function contentLabel(d){
   return (w%2===1) ? '인스타' : '블로그';
 }
 const WEEKDAY_KR = ['일','월','화','수','목','금','토'];
+
+// 대한민국 법정공휴일 (설날·추석·부처님오신날 등 음력 기준 날짜는 매년 바뀌므로 새해가 오면 갱신 필요)
+const KR_HOLIDAYS = {
+  '2026-01-01': '신정',
+  '2026-02-16': '설날 연휴',
+  '2026-02-17': '설날',
+  '2026-02-18': '설날 연휴',
+  '2026-03-01': '삼일절',
+  '2026-03-02': '삼일절 대체공휴일',
+  '2026-05-05': '어린이날',
+  '2026-05-24': '부처님오신날',
+  '2026-05-25': '부처님오신날 대체공휴일',
+  '2026-06-06': '현충일',
+  '2026-07-17': '제헌절',
+  '2026-08-15': '광복절',
+  '2026-08-17': '광복절 대체공휴일',
+  '2026-09-24': '추석 연휴',
+  '2026-09-25': '추석',
+  '2026-09-26': '추석 연휴',
+  '2026-10-03': '개천절',
+  '2026-10-05': '개천절 대체공휴일',
+  '2026-10-09': '한글날',
+  '2026-12-25': '크리스마스',
+};
+function getHoliday(dk){ return KR_HOLIDAYS[dk]; }
 
 // 요일별 실제 스케줄. 월/수만 오전 레슨, 화/목은 레슨 없이 바로 운동,
 // 금요일은 오전 일정은 유지하되 출근 후 운동을 먼저 하고 오후에 밀린 업무(블로그·영상편집)를 몰아서 처리,
@@ -1154,7 +1180,10 @@ function renderSchedule(){
     const isSelected = dk===selectedSchedDate;
     const wd = dateObj.getDay();
     const wdClass = wd===0 ? ' sun' : wd===6 ? ' sat' : '';
-    cells.push(`<div class="cal-day${isToday?' today':''}${isSelected?' selected':''}${wdClass}" data-date="${dk}">${d}${hasEvent?'<span class="dot"></span>':''}</div>`);
+    const holidayName = getHoliday(dk);
+    const holidayClass = holidayName ? ' holiday' : '';
+    const holidayAttr = holidayName ? ` title="${escapeHtml(holidayName)}"` : '';
+    cells.push(`<div class="cal-day${isToday?' today':''}${isSelected?' selected':''}${wdClass}${holidayClass}" data-date="${dk}"${holidayAttr}>${d}${hasEvent?'<span class="dot"></span>':''}</div>`);
   }
   document.getElementById('cal-days').innerHTML = cells.join('');
 
@@ -1170,8 +1199,9 @@ function renderSchedule(){
 
 function renderEventEditor(){
   const dateObj = keyToDate(selectedSchedDate);
+  const holidayName = getHoliday(selectedSchedDate);
   document.getElementById('event-editor-date').textContent =
-    `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${WEEKDAY_KR[dateObj.getDay()]}) 일정`;
+    `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${WEEKDAY_KR[dateObj.getDay()]})${holidayName?' · '+holidayName:''} 일정`;
 
   const list = document.getElementById('event-list');
   const items = eventsForDate(selectedSchedDate);
