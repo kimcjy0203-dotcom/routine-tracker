@@ -148,21 +148,22 @@
 
   /* ---------- 오늘 체크 ---------- */
   .today-head{
-    display:flex; justify-content:space-between; align-items:center;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px;
     background:var(--ink); color:var(--bg); border-radius:18px; padding:14px 16px; margin-bottom:14px;
     box-shadow:var(--card-shadow);
   }
   .today-date{ font-weight:800; font-size:16px; }
   .today-type{ font-family:'JetBrains Mono','SF Mono',monospace; font-size:11px; opacity:0.75; }
 
-  .day-off-btn{
-    display:block; width:100%; appearance:none; cursor:pointer;
-    background:var(--card); color:var(--muted); font-family:inherit; font-size:12px; font-weight:600;
-    padding:8px 10px; border-radius:12px; margin-bottom:10px; text-align:center;
-    border:1px solid var(--line); box-shadow:var(--card-shadow);
-    transition: background .15s ease, color .15s ease;
+  .today-head-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .day-off-icon-btn{
+    appearance:none; border:none; cursor:pointer; padding:0;
+    width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    background:rgba(127,127,127,0.25); color:inherit; font-size:13px;
+    display:flex; align-items:center; justify-content:center;
+    transition: background .15s ease;
   }
-  .day-off-btn.active{ background:var(--banner-info-bg); color:var(--accent); }
+  .day-off-icon-btn.active{ background:var(--accent); }
 
   .week-summary{
     display:flex; justify-content:space-between; align-items:center;
@@ -297,6 +298,69 @@
   .chart-card canvas{ display:block; width:100%; }
 
   .empty{ text-align:center; color:var(--muted); font-size:13px; padding:30px 10px; }
+
+  /* ---------- 일정 ---------- */
+  .cal-weekdays{
+    display:grid; grid-template-columns:repeat(7,1fr); text-align:center;
+    font-family:'JetBrains Mono','SF Mono',monospace; font-size:10.5px; letter-spacing:0.02em;
+    color:var(--muted); margin-bottom:10px; padding:0 2px;
+  }
+  .cal-weekdays span.sun{ color:var(--warn); opacity:0.85; }
+  .cal-weekdays span.sat{ color:var(--accent); opacity:0.85; }
+  .cal-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:20px; }
+  .cal-day{
+    position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    border-radius:12px; background:var(--card); border:1px solid var(--line);
+    font-size:13px; font-weight:600; cursor:pointer; color:var(--ink);
+    font-variant-numeric:tabular-nums; transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
+  }
+  .cal-day:not(.empty):hover{ background:var(--banner-info-bg); }
+  .cal-day:not(.empty):active{ transform:scale(0.94); }
+  .cal-day.empty{ background:none; border-color:transparent; cursor:default; }
+  .cal-day.sun{ color:var(--warn); }
+  .cal-day.sat{ color:var(--accent); }
+  .cal-day.today{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .cal-day.selected{ box-shadow:0 0 0 2px var(--accent) inset; }
+  .cal-day .dot{
+    position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%; background:var(--accent);
+  }
+  .cal-day.today .dot{ background:var(--bg); }
+
+  .event-editor{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px;
+    box-shadow:var(--card-shadow);
+  }
+  .event-editor-date{
+    font-weight:700; font-size:14px; margin-bottom:12px; letter-spacing:-0.01em;
+  }
+  .event-input-row{ display:flex; gap:8px; margin-bottom:12px; }
+  .event-input-row input{
+    flex:1; border:1px solid var(--line); background:var(--bg); color:var(--ink);
+    border-radius:980px; padding:9px 14px; font-size:13px; font-family:inherit;
+    transition: border-color .15s ease;
+  }
+  .event-input-row input:focus-visible{ outline:none; border-color:var(--accent); }
+  .event-input-row button{
+    appearance:none; border:none; cursor:pointer; background:var(--accent); color:#fff;
+    font-weight:700; font-size:13px; padding:9px 18px; border-radius:980px; font-family:inherit;
+    transition: opacity .15s ease;
+  }
+  .event-input-row button:hover{ opacity:0.85; }
+  .event-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .event-list li{
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    background:var(--bg); border-radius:12px; padding:10px 8px 10px 12px; font-size:13px;
+    border-left:3px solid var(--accent);
+  }
+  .event-list li .del{
+    appearance:none; border:none; background:none; color:var(--muted); cursor:pointer;
+    font-size:13px; width:22px; height:22px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; transition: background .15s ease, color .15s ease;
+  }
+  .event-list li .del:hover{ background:rgba(127,127,127,0.18); color:var(--warn); }
+  .event-empty{ font-size:12.5px; color:var(--muted); text-align:center; padding:14px 0; }
+
   footer.note{ text-align:center; font-size:11px; color:var(--muted); margin-top:24px; }
 </style>
 </head>
@@ -312,6 +376,7 @@
   <nav>
     <button class="tab-btn active" data-tab="home">홈</button>
     <button class="tab-btn" data-tab="today">오늘 체크</button>
+    <button class="tab-btn" data-tab="schedule">일정</button>
     <button class="tab-btn" data-tab="report">월간 리포트</button>
   </nav>
 
@@ -356,9 +421,11 @@
   <section class="panel" id="panel-today">
     <div class="today-head">
       <div class="today-date" id="today-date">-</div>
-      <div class="today-type" id="today-type">-</div>
+      <div class="today-head-right">
+        <div class="today-type" id="today-type">-</div>
+        <button class="day-off-icon-btn" id="day-off-toggle" title="오늘 쉬는 날로 표시" aria-label="오늘 쉬는 날로 표시" aria-pressed="false">🌴</button>
+      </div>
     </div>
-    <button class="day-off-btn" id="day-off-toggle">🌴 오늘 쉬는 날로 표시</button>
     <div class="week-summary" id="week-summary"></div>
     <div class="week-strip" id="week-strip"></div>
     <div id="today-banners"></div>
@@ -369,6 +436,25 @@
 
     <div class="section-label">오늘의 루틴 · Q2</div>
     <div class="check-list" id="today-checklist"></div>
+  </section>
+
+  <!-- 일정 -->
+  <section class="panel" id="panel-schedule">
+    <div class="month-selector">
+      <button id="sched-prev-month" aria-label="이전 달">‹</button>
+      <div class="label" id="sched-month-label">-</div>
+      <button id="sched-next-month" aria-label="다음 달">›</button>
+    </div>
+    <div class="cal-weekdays" id="cal-weekdays"></div>
+    <div class="cal-days" id="cal-days"></div>
+    <div class="event-editor">
+      <div class="event-editor-date" id="event-editor-date">-</div>
+      <div class="event-input-row">
+        <input type="text" id="event-input" placeholder="일정 입력 후 추가">
+        <button id="event-add-btn">추가</button>
+      </div>
+      <ul class="event-list" id="event-list"></ul>
+    </div>
   </section>
 
   <!-- 월간 리포트 -->
@@ -449,6 +535,12 @@ const Q1_TASKS = [
 ];
 
 function pad(n){ return String(n).padStart(2,'0'); }
+function bindMonthNav(prevId, nextId, monthDate, renderFn){
+  document.getElementById(prevId).addEventListener('click', ()=>{ monthDate.setMonth(monthDate.getMonth()-1); renderFn(); });
+  document.getElementById(nextId).addEventListener('click', ()=>{ monthDate.setMonth(monthDate.getMonth()+1); renderFn(); });
+}
+const HTML_ESCAPE_MAP = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, ch=>HTML_ESCAPE_MAP[ch]); }
 function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function keyToDate(k){ const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); }
 function contentLabel(d){
@@ -509,6 +601,36 @@ function setDayOff(dk, off){
   }catch(e){ console.error('쉬는 날 저장 실패', e); }
 }
 
+/* ---------------- 일정 (이벤트) ---------------- */
+let eventsCache = null;
+function getEvents(){
+  if(eventsCache) return eventsCache;
+  try{ const raw = localStorage.getItem('events'); eventsCache = raw ? JSON.parse(raw) : {}; }
+  catch(e){ console.error('일정 불러오기 실패', e); eventsCache = {}; }
+  return eventsCache;
+}
+function saveEvents(ev){
+  try{ localStorage.setItem('events', JSON.stringify(ev)); eventsCache = ev; }
+  catch(e){ console.error('일정 저장 실패', e); }
+}
+function eventsForDate(dk){
+  return getEvents()[dk] || [];
+}
+function addEvent(dk, text){
+  const ev = getEvents();
+  if(!ev[dk]) ev[dk] = [];
+  ev[dk].push(text);
+  saveEvents(ev);
+}
+function removeEvent(dk, idx){
+  const ev = getEvents();
+  if(ev[dk]){
+    ev[dk].splice(idx,1);
+    if(ev[dk].length===0) delete ev[dk];
+    saveEvents(ev);
+  }
+}
+
 /* ---------------- 탭 전환 ---------------- */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -517,6 +639,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.classList.add('active');
     document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
     if(btn.dataset.tab==='report') renderReport();
+    if(btn.dataset.tab==='schedule') renderSchedule();
   });
 });
 
@@ -579,9 +702,6 @@ function renderWeekStrip(today, todayKey, todayLog){
 }
 
 /* ---------------- 요일 상세 모달 ---------------- */
-function escapeHtml(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
 function openDayModal(dk){
   const d = keyToDate(dk);
   const log = logCache[dk] || {};
@@ -653,9 +773,9 @@ async function renderToday(){
   document.getElementById('today-type').textContent =
     dayOff ? '🌴 쉬는 날 (수동 설정)' : WEEK_PLAN[today.getDay()].detail;
 
-  const toggleBtn = document.getElementById('day-off-toggle');
-  toggleBtn.textContent = dayOff ? '🌴 쉬는 날 해제하기' : '🌴 오늘 쉬는 날로 표시';
-  toggleBtn.classList.toggle('active', dayOff);
+  const dayOffBtn = document.getElementById('day-off-toggle');
+  dayOffBtn.classList.toggle('active', dayOff);
+  dayOffBtn.setAttribute('aria-pressed', String(dayOff));
 
   let log = logCache[key] || (await getLog(key)) || {};
 
@@ -692,6 +812,10 @@ async function renderToday(){
 
   // 배너
   const banners = [];
+  const todayEvents = eventsForDate(key);
+  if(todayEvents.length){
+    banners.push(`<div class="banner info">📅 오늘 일정: <b>${todayEvents.map(escapeHtml).join(', ')}</b></div>`);
+  }
   const fridayPriority = (today.getDay()===5 && !dayOff);
   if(fridayPriority){
     const exName = CATS.find(c=>c.key==='exercise').name;
@@ -805,6 +929,12 @@ async function renderToday(){
   wireCheckboxes(list);
   wireNoteInputs(list);
 }
+
+document.getElementById('day-off-toggle').addEventListener('click', ()=>{
+  const key = dateKey(new Date());
+  setDayOff(key, !isDayOff(key));
+  renderToday();
+});
 
 /* ---------------- 캔버스 차트 유틸 ---------------- */
 function getCSSVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
@@ -948,6 +1078,86 @@ window.addEventListener('resize', debounce(drawCharts, 150));
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawCharts);
 new MutationObserver(drawCharts).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
 
+/* ---------------- 일정 캘린더 ---------------- */
+let currentSchedMonth = new Date(); currentSchedMonth.setDate(1);
+let lastKnownToday = dateKey(new Date());
+let selectedSchedDate = lastKnownToday;
+
+function renderSchedule(){
+  const todayKeyNow = dateKey(new Date());
+  if(todayKeyNow !== lastKnownToday){
+    if(selectedSchedDate === lastKnownToday) selectedSchedDate = todayKeyNow; // 자정을 넘겨도 '오늘'을 계속 보고 있던 경우만 따라 이동
+    lastKnownToday = todayKeyNow;
+  }
+
+  const y = currentSchedMonth.getFullYear();
+  const m = currentSchedMonth.getMonth();
+  document.getElementById('sched-month-label').textContent = `${y}년 ${m+1}월`;
+  document.getElementById('cal-weekdays').innerHTML = WEEKDAY_KR.map((w,i)=>
+    `<span${i===0?' class="sun"':i===6?' class="sat"':''}>${w}</span>`
+  ).join('');
+
+  const firstDay = new Date(y,m,1);
+  const startOffset = firstDay.getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const ev = getEvents();
+
+  const cells = [];
+  for(let i=0;i<startOffset;i++){ cells.push('<div class="cal-day empty"></div>'); }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateObj = new Date(y,m,d);
+    const dk = dateKey(dateObj);
+    const hasEvent = ev[dk] && ev[dk].length>0;
+    const isToday = dk===todayKeyNow;
+    const isSelected = dk===selectedSchedDate;
+    const wd = dateObj.getDay();
+    const wdClass = wd===0 ? ' sun' : wd===6 ? ' sat' : '';
+    cells.push(`<div class="cal-day${isToday?' today':''}${isSelected?' selected':''}${wdClass}" data-date="${dk}">${d}${hasEvent?'<span class="dot"></span>':''}</div>`);
+  }
+  document.getElementById('cal-days').innerHTML = cells.join('');
+
+  document.querySelectorAll('#cal-days .cal-day:not(.empty)').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      selectedSchedDate = cell.dataset.date;
+      renderSchedule();
+    });
+  });
+
+  renderEventEditor();
+}
+
+function renderEventEditor(){
+  const dateObj = keyToDate(selectedSchedDate);
+  document.getElementById('event-editor-date').textContent =
+    `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${WEEKDAY_KR[dateObj.getDay()]}) 일정`;
+
+  const list = document.getElementById('event-list');
+  const items = eventsForDate(selectedSchedDate);
+  list.innerHTML = items.length
+    ? items.map((t,i)=>`<li><span>${escapeHtml(t)}</span><button class="del" data-idx="${i}" aria-label="삭제">✕</button></li>`).join('')
+    : `<div class="event-empty">등록된 일정이 없어요</div>`;
+
+  list.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      removeEvent(selectedSchedDate, Number(btn.dataset.idx));
+      renderSchedule();
+    });
+  });
+}
+
+document.getElementById('event-add-btn').addEventListener('click', ()=>{
+  const input = document.getElementById('event-input');
+  const text = input.value.trim();
+  if(!text) return;
+  addEvent(selectedSchedDate, text);
+  input.value = '';
+  renderSchedule();
+});
+document.getElementById('event-input').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.isComposing) document.getElementById('event-add-btn').click();
+});
+bindMonthNav('sched-prev-month', 'sched-next-month', currentSchedMonth, renderSchedule);
+
 /* ---------------- 월간 리포트 ---------------- */
 async function renderReport(){
   await loadAllLogs();
@@ -1005,20 +1215,7 @@ async function renderReport(){
   drawCharts();
 }
 
-document.getElementById('day-off-toggle').addEventListener('click', ()=>{
-  const k = dateKey(new Date());
-  setDayOff(k, !isDayOff(k));
-  renderToday();
-});
-
-document.getElementById('prev-month').addEventListener('click', ()=>{
-  currentReportMonth.setMonth(currentReportMonth.getMonth()-1);
-  renderReport();
-});
-document.getElementById('next-month').addEventListener('click', ()=>{
-  currentReportMonth.setMonth(currentReportMonth.getMonth()+1);
-  renderReport();
-});
+bindMonthNav('prev-month', 'next-month', currentReportMonth, renderReport);
 
 /* ---------------- 초기화 ---------------- */
 (async function init(){
