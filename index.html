@@ -357,11 +357,12 @@ const CAT_COLOR_VAR = { ritual:'--ritual', study:'--study', exercise:'--exercise
 
 // Q1 (중요+긴급) 체크 항목 — 근무시간 안에서 매일 자동 처리되는 업무. 개인 습관(CATS)과 별도로 관리되며
 // 월간 리포트/연속기록 집계에는 포함하지 않고 오늘 체크에서만 확인용으로 체크한다.
+// onlyDay가 있으면 해당 요일(getDay() 기준, 5=금요일)에만 노출된다.
 const Q1_TASKS = [
   { key:'q1_lesson',     name:'레슨 진행 / 레슨준비' },
   { key:'q1_exlog',      name:'운동일지 업데이트' },
-  { key:'q1_ot',         name:'OT 회원 수업' },
-  { key:'q1_endcontact', name:'종료(예정)회원 연락' },
+  { key:'q1_ot',         name:'OT 회원 수업',         onlyDay:5 },
+  { key:'q1_endcontact', name:'종료(예정)회원 연락', onlyDay:5 },
 ];
 
 function pad(n){ return String(n).padStart(2,'0'); }
@@ -587,10 +588,10 @@ async function renderToday(){
     });
   }
 
-  // Q1 (즉시 처리) 체크리스트
+  // Q1 (즉시 처리) 체크리스트 — onlyDay가 지정된 항목은 해당 요일에만 노출
   const q1List = document.getElementById('q1-checklist');
   q1List.innerHTML = '';
-  Q1_TASKS.forEach(t=>{
+  Q1_TASKS.filter(t=> t.onlyDay===undefined || t.onlyDay===today.getDay()).forEach(t=>{
     const checked = !!log[t.key];
     const item = document.createElement('div');
     item.className = 'check-item' + (checked?' done':'');
