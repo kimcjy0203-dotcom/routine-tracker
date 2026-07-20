@@ -188,9 +188,12 @@
   .banner.good{ background:var(--banner-good-bg); color:var(--good); }
   .banner.info{ background:var(--banner-info-bg); color:var(--accent); }
 
-  .check-list{ display:flex; flex-direction:column; gap:8px; }
+  .section-label{ font-size:13px; font-weight:700; margin:4px 0 2px; }
+  .section-desc{ font-size:11px; color:var(--muted); margin-bottom:8px; }
+
+  .check-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
   .check-item{
-    display:flex; align-items:center; gap:12px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:12px;
     background:var(--card); border-radius:14px; padding:12px 14px;
     box-shadow:var(--card-shadow);
     border-left:3px solid var(--cat-color);
@@ -210,6 +213,12 @@
     background:rgba(127,127,127,0.12); padding:2px 8px; border-radius:20px; white-space:nowrap;
   }
   .check-item.disabled{ opacity:0.4; }
+  .note-input{
+    flex-basis:100%; width:100%; margin-top:2px;
+    border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--ink);
+    font-family:inherit; font-size:12.5px; padding:8px 10px; resize:vertical; min-height:36px;
+  }
+  .note-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
 
   /* ---------- 월간 리포트 ---------- */
   .month-selector{
@@ -303,6 +312,12 @@
     <div class="week-summary" id="week-summary"></div>
     <div class="week-strip" id="week-strip"></div>
     <div id="today-banners"></div>
+
+    <div class="section-label">즉시 처리 · Q1</div>
+    <div class="section-desc">근무시간 안에서 매일 자동 처리</div>
+    <div class="check-list" id="q1-checklist"></div>
+
+    <div class="section-label">오늘의 루틴 · Q2</div>
     <div class="check-list" id="today-checklist"></div>
   </section>
 
@@ -333,12 +348,21 @@ const FONT_STACK = "'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-ser
 const CATS = [
   { key:'ritual',   name:'아침 리추얼',      desc:'감사일기 + 아침일기 · 07:00–07:10' },
   { key:'study',    name:'독서/자격증/영어', desc:'07:10–08:00' },
-  { key:'exercise', name:'운동',             desc:'본인 운동' },
+  { key:'exercise', name:'운동',             desc:'본인 운동', hasNote:true, notePlaceholder:'오늘 어떤 운동 했는지 적어보세요 (예: 스쿼트 3세트, 러닝 20분)' },
   { key:'content',  name:'콘텐츠 제작',      desc:'인스타/블로그' },
   { key:'chore',    name:'집안일',           desc:'장보기·밥·청소 · 20:00–22:00' },
 ];
 // 카테고리별 실제 색상값 (CSS 커스텀 프로퍼티와 1:1로 대응, 캔버스 차트에서 재사용)
 const CAT_COLOR_VAR = { ritual:'--ritual', study:'--study', exercise:'--exercise', content:'--content', chore:'--chore' };
+
+// Q1 (중요+긴급) 체크 항목 — 근무시간 안에서 매일 자동 처리되는 업무. 개인 습관(CATS)과 별도로 관리되며
+// 월간 리포트/연속기록 집계에는 포함하지 않고 오늘 체크에서만 확인용으로 체크한다.
+const Q1_TASKS = [
+  { key:'q1_lesson',     name:'레슨 진행 / 레슨준비' },
+  { key:'q1_exlog',      name:'운동일지 업데이트' },
+  { key:'q1_ot',         name:'OT 회원 수업' },
+  { key:'q1_endcontact', name:'종료(예정)회원 연락' },
+];
 
 function pad(n){ return String(n).padStart(2,'0'); }
 function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
@@ -472,10 +496,16 @@ async function renderToday(){
   const today = new Date();
   const key = dateKey(today);
   const cLabel = contentLabel(today);
+  const dayOff = isDayOff(key);
 
   document.getElementById('today-date').textContent =
     `${today.getMonth()+1}월 ${today.getDate()}일 (${WEEKDAY_KR[today.getDay()]})`;
-  document.getElementById('today-type').textContent = WEEK_PLAN[today.getDay()].detail;
+  document.getElementById('today-type').textContent =
+    dayOff ? '🌴 쉬는 날 (수동 설정)' : WEEK_PLAN[today.getDay()].detail;
+
+  const toggleBtn = document.getElementById('day-off-toggle');
+  toggleBtn.textContent = dayOff ? '🌴 쉬는 날 해제하기' : '🌴 오늘 쉬는 날로 표시';
+  toggleBtn.classList.toggle('active', dayOff);
 
   let log = logCache[key] || (await getLog(key)) || {};
 
@@ -512,7 +542,8 @@ async function renderToday(){
 
   // 배너
   const banners = [];
-  if(today.getDay()===5){
+  const fridayPriority = (today.getDay()===5 && !dayOff);
+  if(fridayPriority){
     const exName = CATS.find(c=>c.key==='exercise').name;
     const ctName = CATS.find(c=>c.key==='content').name;
     banners.push(`<div class="banner info">📌 오늘은 밀린 업무 처리하는 날이에요 — 아침 루틴 마치고 출근해서 <b>${exName}</b> 먼저, 점심 이후엔 밀린 <b>${ctName}</b>(블로그·영상편집)을 몰아서 진행해요.</div>`);
@@ -533,7 +564,48 @@ async function renderToday(){
   }
   document.getElementById('today-banners').innerHTML = banners.join('');
 
-  // 체크리스트
+  // 체크박스 change 리스너 공통 처리 (Q1/Q2 공용)
+  function wireCheckboxes(container){
+    container.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+      cb.addEventListener('change', async ()=>{
+        log[cb.dataset.key] = cb.checked;
+        logCache[key] = {...log};
+        await setLog(key, log);
+        renderToday();
+      });
+    });
+  }
+  // 메모(텍스트) 저장 리스너 — 포커스를 잃지 않도록 renderToday()를 다시 부르지 않는다
+  function wireNoteInputs(container){
+    container.querySelectorAll('textarea.note-input').forEach(ta=>{
+      ta.addEventListener('change', async ()=>{
+        const k = ta.dataset.notekey;
+        log[k+'Note'] = ta.value;
+        logCache[key] = {...log};
+        await setLog(key, log);
+      });
+    });
+  }
+
+  // Q1 (즉시 처리) 체크리스트
+  const q1List = document.getElementById('q1-checklist');
+  q1List.innerHTML = '';
+  Q1_TASKS.forEach(t=>{
+    const checked = !!log[t.key];
+    const item = document.createElement('div');
+    item.className = 'check-item' + (checked?' done':'');
+    item.style.setProperty('--cat-color', 'var(--exercise)');
+    item.innerHTML = `
+      <input type="checkbox" ${checked?'checked':''} data-key="${t.key}" id="chk-${t.key}">
+      <label class="info" for="chk-${t.key}">
+        <div class="name">${t.name}</div>
+      </label>
+    `;
+    q1List.appendChild(item);
+  });
+  wireCheckboxes(q1List);
+
+  // Q2 (오늘의 루틴) 체크리스트
   const list = document.getElementById('today-checklist');
   list.innerHTML = '';
   CATS.forEach(c=>{
@@ -543,25 +615,30 @@ async function renderToday(){
     item.className = 'check-item' + (checked?' done':'') + (isContentOff?' disabled':'');
     item.style.setProperty('--cat-color', `var(${CAT_COLOR_VAR[c.key]})`);
     const descText = c.key==='content' ? `${c.desc} · 오늘: ${cLabel}` : c.desc;
+    let badge = '';
+    if(fridayPriority && c.key==='exercise') badge = '<span class="pill-badge">오늘 먼저</span>';
+    if(fridayPriority && c.key==='content') badge = '<span class="pill-badge">밀린 업무</span>';
     item.innerHTML = `
       <input type="checkbox" ${checked?'checked':''} ${isContentOff?'disabled':''} data-key="${c.key}" id="chk-${c.key}">
       <label class="info" for="chk-${c.key}">
-        <div class="name">${c.name}${isContentOff?' (휴무)':''}</div>
+        <div class="name">${c.name}${isContentOff?' (휴무)':''}${badge}</div>
         <div class="desc">${descText}</div>
       </label>
       <div class="streak">${isContentOff ? '-' : (streak(c.key)+'일 연속')}</div>
     `;
+    if(c.hasNote){
+      const ta = document.createElement('textarea');
+      ta.className = 'note-input';
+      ta.placeholder = c.notePlaceholder || '오늘 기록 남기기';
+      ta.dataset.notekey = c.key;
+      ta.value = log[c.key+'Note'] || '';
+      item.appendChild(ta);
+    }
     list.appendChild(item);
   });
 
-  list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
-    cb.addEventListener('change', async ()=>{
-      log[cb.dataset.key] = cb.checked;
-      logCache[key] = {...log};
-      await setLog(key, log);
-      renderToday();
-    });
-  });
+  wireCheckboxes(list);
+  wireNoteInputs(list);
 }
 
 /* ---------------- 캔버스 차트 유틸 ---------------- */
@@ -762,6 +839,12 @@ async function renderReport(){
   };
   drawCharts();
 }
+
+document.getElementById('day-off-toggle').addEventListener('click', ()=>{
+  const k = dateKey(new Date());
+  setDayOff(k, !isDayOff(k));
+  renderToday();
+});
 
 document.getElementById('prev-month').addEventListener('click', ()=>{
   currentReportMonth.setMonth(currentReportMonth.getMonth()-1);
