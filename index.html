@@ -24,6 +24,8 @@
     --exercise:#D70015;
     --content:#BF5B04;
     --chore:#6E6E73;
+    --event-personal:#0071E3;
+    --event-center:#7C5CFC;
   }
   @media (prefers-color-scheme: dark){
     :root{
@@ -35,6 +37,7 @@
       --card-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 24px rgba(0,0,0,0.6);
       --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.35);
       --ritual:#409CFF; --study:#32D74B; --exercise:#FF453A; --content:#FF9F0A; --chore:#98989D;
+      --event-personal:#409CFF; --event-center:#A78BFA;
     }
   }
   :root[data-theme="dark"]{
@@ -46,6 +49,7 @@
     --card-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 24px rgba(0,0,0,0.6);
     --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.35);
     --ritual:#409CFF; --study:#32D74B; --exercise:#FF453A; --content:#FF9F0A; --chore:#98989D;
+    --event-personal:#409CFF; --event-center:#A78BFA;
   }
   :root[data-theme="light"]{
     --bg:#FFFFFF; --card:#F5F5F7; --ink:#1D1D1F; --line: rgba(0,0,0,0.08); --muted:#6E6E73;
@@ -56,6 +60,7 @@
     --card-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(0,0,0,0.04), 0 10px 24px rgba(0,0,0,0.07);
     --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.06);
     --ritual:#0071E3; --study:#248A3D; --exercise:#D70015; --content:#BF5B04; --chore:#6E6E73;
+    --event-personal:#0071E3; --event-center:#7C5CFC;
   }
   *{box-sizing:border-box;}
   body{
@@ -281,6 +286,7 @@
   .modal-item{ display:flex; align-items:center; gap:8px; font-size:13px; padding:4px 0; }
   .modal-item-check{ cursor:pointer; }
   .modal-item-check input[type=checkbox]{ width:16px; height:16px; flex-shrink:0; cursor:pointer; accent-color:var(--accent); }
+  .modal-item-cat-dot{ width:6px; height:6px; border-radius:50%; flex-shrink:0; }
   .modal-item .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   .modal-item .dot.on{ background:var(--good); }
   .modal-item .dot.off{ background:rgba(127,127,127,0.3); }
@@ -343,11 +349,14 @@
   .cal-day.holiday{ color:var(--warn); }
   .cal-day.today{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
   .cal-day.selected{ box-shadow:0 0 0 2px var(--accent) inset; }
-  .cal-day .dot{
+  .cal-day-dots{
     position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
-    width:4px; height:4px; border-radius:50%; background:var(--accent);
+    display:flex; gap:3px;
   }
-  .cal-day.today .dot{ background:var(--bg); }
+  .cal-day-dots .dot{ width:4px; height:4px; border-radius:50%; }
+  .dot-personal{ background:var(--event-personal); }
+  .dot-center{ background:var(--event-center); }
+  .cal-day.today .dot-personal, .cal-day.today .dot-center{ background:var(--bg); }
 
   .event-editor{
     background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px;
@@ -356,6 +365,14 @@
   .event-editor-date{
     font-weight:700; font-size:14px; margin-bottom:12px; letter-spacing:-0.01em;
   }
+  .event-category-row{ display:flex; gap:6px; margin-bottom:10px; }
+  .event-cat-btn{
+    appearance:none; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700;
+    padding:6px 14px; border-radius:980px; border:1px solid var(--line); background:var(--bg); color:var(--muted);
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .event-cat-btn[data-cat="personal"].active{ background:var(--event-personal); border-color:var(--event-personal); color:#fff; }
+  .event-cat-btn[data-cat="center"].active{ background:var(--event-center); border-color:var(--event-center); color:#fff; }
   .event-input-row{ display:flex; gap:8px; margin-bottom:12px; }
   .event-input-row input{
     flex:1; border:1px solid var(--line); background:var(--bg); color:var(--ink);
@@ -373,7 +390,9 @@
   .event-list li{
     display:flex; align-items:center; gap:10px;
     background:var(--bg); border-radius:12px; padding:10px 8px 10px 12px; font-size:13px;
+    border-left:3px solid var(--event-personal);
   }
+  .event-list li.cat-center{ border-left-color:var(--event-center); }
   .event-list li input[type=checkbox]{
     width:18px; height:18px; flex-shrink:0; cursor:pointer;
     accent-color: var(--accent); border-radius:5px;
@@ -479,6 +498,10 @@
       </div>
       <div class="event-editor">
         <div class="event-editor-date" id="event-editor-date">-</div>
+        <div class="event-category-row">
+          <button type="button" class="event-cat-btn active" data-cat="personal">개인</button>
+          <button type="button" class="event-cat-btn" data-cat="center">센터</button>
+        </div>
         <div class="event-input-row">
           <input type="text" id="event-input" placeholder="일정 입력 후 추가">
           <button id="event-add-btn">추가</button>
@@ -1302,14 +1325,19 @@ function saveEvents(ev){
   catch(e){ console.error('일정 저장 실패', e); }
   fbRoot.child('events').set(ev).catch(e=>console.error('동기화 실패', e));
 }
+function normalizeEvent(e){
+  return typeof e === 'string'
+    ? { text: e, done: false, category: 'personal' }
+    : { text: e.text, done: !!e.done, category: e.category || 'personal' };
+}
 function eventsForDate(dk){
   const list = getEvents()[dk] || [];
-  return list.map(e => typeof e === 'string' ? { text: e, done: false } : e);
+  return list.map(normalizeEvent);
 }
-function addEvent(dk, text){
+function addEvent(dk, text, category){
   const ev = getEvents();
   if(!ev[dk]) ev[dk] = [];
-  ev[dk].push({ text, done: false });
+  ev[dk].push({ text, done: false, category: category || 'personal' });
   saveEvents(ev);
 }
 function removeEvent(dk, idx){
@@ -1324,9 +1352,8 @@ function toggleEvent(dk, idx){
   const ev = getEvents();
   const cur = ev[dk] && ev[dk][idx];
   if(cur === undefined) return;
-  const text = typeof cur === 'string' ? cur : cur.text;
-  const done = typeof cur === 'string' ? false : !!cur.done;
-  ev[dk][idx] = { text, done: !done };
+  const normalized = normalizeEvent(cur);
+  ev[dk][idx] = { ...normalized, done: !normalized.done };
   saveEvents(ev);
 }
 
@@ -1492,6 +1519,7 @@ function openDayModal(dk){
   const eventRows = events.length
     ? events.map((e,i)=>`
         <label class="modal-item modal-item-check">
+          <span class="modal-item-cat-dot" style="background:var(${e.category==='center'?'--event-center':'--event-personal'})"></span>
           <input type="checkbox" ${e.done?'checked':''} data-dk="${dk}" data-evidx="${i}">
           <span>${escapeHtml(e.text)}</span>
         </label>
@@ -1977,7 +2005,12 @@ function renderSchedule(){
   for(let d=1; d<=daysInMonth; d++){
     const dateObj = new Date(y,m,d);
     const dk = dateKey(dateObj);
-    const hasEvent = ev[dk] && ev[dk].length>0;
+    const dayEvents = (ev[dk] || []).map(normalizeEvent);
+    const hasPersonal = dayEvents.some(e=> e.category==='personal');
+    const hasCenter = dayEvents.some(e=> e.category==='center');
+    const dotsHTML = (hasPersonal || hasCenter)
+      ? `<span class="cal-day-dots">${hasPersonal?'<span class="dot dot-personal"></span>':''}${hasCenter?'<span class="dot dot-center"></span>':''}</span>`
+      : '';
     const isToday = dk===todayKeyNow;
     const isSelected = dk===selectedSchedDate;
     const wd = dateObj.getDay();
@@ -1985,7 +2018,7 @@ function renderSchedule(){
     const holidayName = getHoliday(dk);
     const holidayClass = holidayName ? ' holiday' : '';
     const holidayAttr = holidayName ? ` title="${escapeHtml(holidayName)}"` : '';
-    cells.push(`<div class="cal-day${isToday?' today':''}${isSelected?' selected':''}${wdClass}${holidayClass}" data-date="${dk}"${holidayAttr}>${d}${hasEvent?'<span class="dot"></span>':''}</div>`);
+    cells.push(`<div class="cal-day${isToday?' today':''}${isSelected?' selected':''}${wdClass}${holidayClass}" data-date="${dk}"${holidayAttr}>${d}${dotsHTML}</div>`);
   }
   document.getElementById('cal-days').innerHTML = cells.join('');
 
@@ -2009,7 +2042,7 @@ function renderEventEditor(){
   const items = eventsForDate(selectedSchedDate);
   list.innerHTML = items.length
     ? items.map((it,i)=>`
-        <li class="${it.done?'done':''}">
+        <li class="cat-${it.category}${it.done?' done':''}">
           <input type="checkbox" ${it.done?'checked':''} data-idx="${i}" id="event-chk-${i}">
           <label for="event-chk-${i}">${escapeHtml(it.text)}</label>
           <button class="del" data-idx="${i}" aria-label="삭제">✕</button>
@@ -2031,11 +2064,18 @@ function renderEventEditor(){
   });
 }
 
+let selectedEventCategory = 'personal';
+document.querySelectorAll('.event-cat-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    selectedEventCategory = btn.dataset.cat;
+    document.querySelectorAll('.event-cat-btn').forEach(b=> b.classList.toggle('active', b===btn));
+  });
+});
 document.getElementById('event-add-btn').addEventListener('click', ()=>{
   const input = document.getElementById('event-input');
   const text = input.value.trim();
   if(!text) return;
-  addEvent(selectedSchedDate, text);
+  addEvent(selectedSchedDate, text, selectedEventCategory);
   input.value = '';
   renderSchedule();
 });
