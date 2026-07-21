@@ -500,6 +500,8 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script>
 const FONT_STACK = "'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif";
 
@@ -616,6 +618,7 @@ async function getLog(key){
 async function setLog(key, obj){
   try{ localStorage.setItem('log:'+key, JSON.stringify(obj)); }
   catch(e){ console.error('저장 실패', e); }
+  fbRoot.child('logs/'+key).set(obj).catch(e=>console.error('동기화 실패', e));
 }
 async function loadAllLogs(){
   const map = {};
@@ -639,6 +642,7 @@ function setDayOff(dk, off){
     if(off) localStorage.setItem('dayoff:'+dk, '1');
     else localStorage.removeItem('dayoff:'+dk);
   }catch(e){ console.error('쉬는 날 저장 실패', e); }
+  fbRoot.child('dayoff/'+dk).set(off ? true : null).catch(e=>console.error('동기화 실패', e));
 }
 
 /* ---------------- 일정 (이벤트) ---------------- */
@@ -652,6 +656,7 @@ function getEvents(){
 function saveEvents(ev){
   try{ localStorage.setItem('events', JSON.stringify(ev)); eventsCache = ev; }
   catch(e){ console.error('일정 저장 실패', e); }
+  fbRoot.child('events').set(ev).catch(e=>console.error('동기화 실패', e));
 }
 function eventsForDate(dk){
   const list = getEvents()[dk] || [];
@@ -679,6 +684,85 @@ function toggleEvent(dk, idx){
   const done = typeof cur === 'string' ? false : !!cur.done;
   ev[dk][idx] = { text, done: !done };
   saveEvents(ev);
+}
+
+/* ---------------- 클라우드 동기화 (Firebase Realtime Database) ---------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyABas4o1-banNzW68shJUIu2k52y1brlco",
+  authDomain: "jy-routine-tracker.firebaseapp.com",
+  databaseURL: "https://jy-routine-tracker-default-rtdb.firebaseio.com",
+  projectId: "jy-routine-tracker",
+  storageBucket: "jy-routine-tracker.firebasestorage.app",
+  messagingSenderId: "543296565685",
+  appId: "1:543296565685:web:fef599fdd3b8c60d1429fc",
+};
+firebase.initializeApp(firebaseConfig);
+const fbRoot = firebase.database().ref('routine-tracker');
+
+// 이 기기의 localStorage 전체를 모아서 최초 1회 업로드할 때 사용
+function collectLocalSnapshot(){
+  const logs = {}, dayoff = {};
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(!k) continue;
+      if(k.startsWith('log:')){
+        try{ logs[k.slice(4)] = JSON.parse(localStorage.getItem(k)); }catch(e){}
+      } else if(k.startsWith('dayoff:')){
+        dayoff[k.slice(7)] = true;
+      }
+    }
+  }catch(e){ console.error('로컬 스냅샷 수집 실패', e); }
+  let events = {};
+  try{ const raw = localStorage.getItem('events'); events = raw ? JSON.parse(raw) : {}; }catch(e){}
+  return { logs, dayoff, events };
+}
+
+// 원격(Firebase) 데이터를 localStorage/메모리 캐시에 반영
+function applyRemoteSnapshot(remote){
+  if(!remote) return;
+  if(remote.logs){
+    Object.keys(remote.logs).forEach(dk=>{
+      localStorage.setItem('log:'+dk, JSON.stringify(remote.logs[dk]));
+      logCache[dk] = remote.logs[dk];
+    });
+  }
+  if(remote.dayoff){
+    Object.keys(remote.dayoff).forEach(dk=>{
+      if(remote.dayoff[dk]) localStorage.setItem('dayoff:'+dk, '1');
+      else localStorage.removeItem('dayoff:'+dk);
+    });
+  }
+  if(remote.events){
+    localStorage.setItem('events', JSON.stringify(remote.events));
+    eventsCache = remote.events;
+  }
+}
+
+function rerenderActivePanel(){
+  const activeTab = document.querySelector('.tab-btn.active');
+  if(!activeTab) return;
+  if(activeTab.dataset.tab==='today') renderToday();
+  else if(activeTab.dataset.tab==='schedule') renderSchedule();
+  else if(activeTab.dataset.tab==='report') renderReport();
+}
+
+async function initCloudSync(){
+  try{
+    const snap = await fbRoot.once('value');
+    const remote = snap.val();
+    if(!remote){
+      await fbRoot.set(collectLocalSnapshot()); // 원격이 비어있으면(최초 연결) 이 기기 기록을 업로드
+    } else {
+      applyRemoteSnapshot(remote);
+    }
+  }catch(e){
+    console.error('클라우드 동기화 초기화 실패 — 오프라인으로 계속 진행', e);
+  }
+  fbRoot.on('value', snap=>{
+    applyRemoteSnapshot(snap.val());
+    rerenderActivePanel();
+  });
 }
 
 /* ---------------- 탭 전환 ---------------- */
@@ -1304,6 +1388,7 @@ bindMonthNav('prev-month', 'next-month', currentReportMonth, renderReport);
 /* ---------------- 초기화 ---------------- */
 (async function init(){
   await loadAllLogs();
+  await initCloudSync();
   await renderToday();
 })();
 </script>
