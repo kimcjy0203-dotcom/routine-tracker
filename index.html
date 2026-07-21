@@ -236,11 +236,23 @@
   .note-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
   .topic-hint{
     flex-basis:100%; width:100%; margin-top:2px;
-    display:flex; gap:6px; align-items:flex-start;
     background:var(--banner-info-bg); color:var(--accent);
     border-radius:10px; padding:8px 10px; font-size:12.5px; line-height:1.4;
   }
   .topic-hint b{ font-weight:700; }
+  .topic-hint-head{ display:flex; gap:6px; align-items:flex-start; }
+  .topic-hint-head > span:nth-child(2){ flex:1; }
+  .topic-toggle{
+    appearance:none; border:none; cursor:pointer; background:none; color:var(--accent);
+    font-size:11px; font-weight:700; padding:2px 4px; flex-shrink:0; font-family:inherit;
+    text-decoration:underline; text-underline-offset:2px;
+  }
+  .topic-detail{ margin-top:8px; padding-top:8px; border-top:1px solid rgba(127,127,127,0.25); }
+  .topic-detail[hidden]{ display:none; }
+  .topic-detail .topic-hook{ margin:0 0 6px; font-weight:600; }
+  .topic-detail ul{ margin:0 0 6px; padding-left:16px; }
+  .topic-detail li{ margin-bottom:3px; }
+  .topic-detail .topic-cta{ margin:0; color:var(--muted); font-size:11.5px; }
 
   /* ---------- 요일 상세 모달 ---------- */
   .modal-overlay{
@@ -518,21 +530,56 @@ const CAT_COLOR_VAR = { ritual:'--ritual', study:'--study', exercise:'--exercise
 
 // 블로그/인스타 콘텐츠 주제 뱅크 — 가동성(관절 가동성 향상) 중심 + 러닝 + 스트렝스(근력) 운동을 섞어서 순환.
 // 날짜(연중 일수)를 기준으로 매일 결정적으로 하나씩 뽑아 보여준다 — 같은 날엔 항상 같은 주제가 나온다.
+// hook/points/cta는 실제 발행 글이 아니라 글 쓸 때 막막하지 않도록 참고하는 개인용 아웃라인이다.
 const CONTENT_TOPICS = [
-  '고관절 가동성 높이는 스트레칭 루틴',
-  '발목 가동성이 무릎 통증에 미치는 영향',
-  '러닝 전 꼭 필요한 동적 워밍업 루틴',
-  '흉추(등 윗부분) 가동성 늘리는 상체 루틴',
-  '스쿼트 전에 체크하면 좋은 가동성 포인트',
-  '러닝 후 회복을 위한 가동성 루틴',
-  '어깨 가동성과 자세의 관계',
-  '스트렝스 훈련 전 준비운동, 뭐가 다를까',
-  '무릎 부담 줄여주는 가동성 운동',
-  '러닝 페이스 올리기 전에 점검할 발목·고관절',
-  '가동성과 근력, 둘 다 챙기는 밸런스 루틴',
-  '골반 가동성 개선하는 루틴',
-  '러닝 부상 예방을 위한 가동성 체크리스트',
-  '5분이면 끝나는 전신 가동성 워밍업',
+  { title:'고관절 가동성 높이는 스트레칭 루틴', hook:'스쿼트, 런지가 유독 뻑뻑하게 느껴진다면 고관절부터 체크해보세요.',
+    points:['런지 자세로 골반 앞쪽 늘리기','누워서 무릎 크게 원 그리기','나비자세로 고관절 안쪽 늘리기'], cta:'운동 전 5분만 투자해도 스쿼트 깊이가 달라져요.' },
+  { title:'발목 가동성이 무릎 통증에 미치는 영향', hook:'무릎이 아픈데 원인은 발목인 경우가 생각보다 많아요.',
+    points:['벽 대고 무릎 앞으로 밀기(발목 가동성 체크)','발목 원 그리며 풀어주기','종아리 스트레칭으로 아킬레스건 여유 만들기'], cta:'발목이 편해지면 무릎으로 가는 부담이 자연스럽게 줄어요.' },
+  { title:'러닝 전 꼭 필요한 동적 워밍업 루틴', hook:'정적 스트레칭보다 동적 워밍업이 러닝 퍼포먼스에 더 도움돼요.',
+    points:['제자리 무릎 들어올리기','레그스윙(다리 앞뒤·좌우 흔들기)','가벼운 스킵으로 마무리'], cta:'5분 워밍업이 부상 예방과 페이스 둘 다 잡아줘요.' },
+  { title:'흉추(등 윗부분) 가동성 늘리는 상체 루틴', hook:'등이 굽어 보이는 것도, 어깨가 아픈 것도 흉추 가동성 문제일 수 있어요.',
+    points:['폼롤러로 등 위쪽 펴주기','팔꿈치 대고 상체 회전','캣카우 자세로 척추 움직이기'], cta:'하루 5분이면 자세가 눈에 띄게 달라져요.' },
+  { title:'스쿼트 전에 체크하면 좋은 가동성 포인트', hook:'스쿼트가 안 내려가는 건 힘이 아니라 가동성 문제일 때가 많아요.',
+    points:['발목 가동성 체크(무릎 앞으로 밀기)','고관절 가동성 체크(깊은 스쿼트 자세 유지)','흉추 가동성 체크(팔 들고 자세 유지)'], cta:'세 가지만 풀어줘도 스쿼트 자세가 훨씬 편해져요.' },
+  { title:'러닝 후 회복을 위한 가동성 루틴', hook:'잘 달리는 것만큼 잘 회복하는 것도 중요해요.',
+    points:['종아리 늘리기(벽 짚고 뒷다리 늘리기)','발목 돌리기','골반 앞쪽 늘리기(런지 자세)','허리 옆으로 늘리기(누워서 무릎 넘기기)'], cta:'러닝 직후 몸이 따뜻할 때 바로 해주는 게 효과적이에요.' },
+  { title:'어깨 가동성과 자세의 관계', hook:'어깨가 굳으면 목과 등까지 같이 굳어요.',
+    points:['벽에 팔 대고 슬라이드','어깨 으쓱+돌리기','문틀 잡고 가슴 펴기'], cta:'데스크워크 많은 분들께 특히 추천해요.' },
+  { title:'스트렝스 훈련 전 준비운동, 뭐가 다를까', hook:'무게를 다루기 전엔 관절부터 깨워야 해요.',
+    points:['가벼운 무게로 워밍업 세트 먼저','타겟 관절 가동성 운동','코어 활성화(배꼽 당기고 버티기)'], cta:'워밍업에 5분 쓰면 본세트가 더 안전하고 힘도 잘 들어가요.' },
+  { title:'무릎 부담 줄여주는 가동성 운동', hook:'무릎 자체보다 위아래(고관절·발목)를 풀어주는 게 우선이에요.',
+    points:['고관절 열기','발목 가동성 늘리기','허벅지 앞뒤 근육 늘리기'], cta:'무릎만 쉬게 하지 말고 주변부터 챙겨보세요.' },
+  { title:'러닝 페이스 올리기 전에 점검할 발목·고관절', hook:'페이스를 올리고 싶다면 가동성부터 먼저 확인하세요.',
+    points:['발목 가동범위 체크','고관절 신전(뒤로 펴기) 확인','종아리 탄력 점검'], cta:'가동성이 확보되면 힘 안 들이고도 페이스가 올라가요.' },
+  { title:'가동성과 근력, 둘 다 챙기는 밸런스 루틴', hook:'유연하기만 하거나 힘만 센 건 반쪽짜리예요.',
+    points:['가동성 운동으로 시작','그 범위 안에서 근력 운동 진행','마무리 스트레칭'], cta:'두 마리 토끼를 같이 잡는 루틴을 소개할게요.' },
+  { title:'골반 가동성 개선하는 루틴', hook:'골반이 틀어지면 허리, 무릎까지 영향 받아요.',
+    points:['골반 시계 운동(누워서 골반 기울이기)','나비자세 스트레칭','힙 서클(엎드려서 다리 돌리기)'], cta:'앉아있는 시간이 긴 분들께 꼭 필요해요.' },
+  { title:'러닝 부상 예방을 위한 가동성 체크리스트', hook:'다치고 나서 후회하지 말고 미리 체크해보세요.',
+    points:['발목 가동범위','고관절 가동범위','종아리·햄스트링 유연성'], cta:'세 가지 다 괜찮다면 부상 위험이 확실히 줄어요.' },
+  { title:'5분이면 끝나는 전신 가동성 워밍업', hook:'시간 없을 때도 이것만은 하고 운동하세요.',
+    points:['목·어깨 풀기','골반·고관절 풀기','발목 풀기'], cta:'짧아도 꾸준하면 확실히 달라져요.' },
+  { title:'코어 안정화, 왜 모든 운동의 기본일까', hook:'코어가 흔들리면 어떤 운동을 해도 힘이 새요.',
+    points:['배꼽 당기고 버티는 감각 익히기','플랭크로 코어 유지력 훈련','데드버그로 팔다리 움직여도 코어 유지하기'], cta:'코어부터 잡히면 다른 운동 퍼포먼스가 같이 올라가요.' },
+  { title:'하체 근력, 어디부터 시작해야 할까', hook:'무작정 무게부터 올리기 전에 순서가 있어요.',
+    points:['체중 스쿼트로 자세 먼저 잡기','런지로 좌우 밸런스 확인','힙힌지 패턴 익히기(데드리프트 기초)'], cta:'자세가 잡히면 무게는 자연스럽게 따라와요.' },
+  { title:'등 근력이 약하면 생기는 일', hook:'등이 약하면 어깨, 허리가 먼저 아파요.',
+    points:['밴드로 잡아당기기 동작 익히기','로우 동작으로 등 근육 활성화','견갑골 모으는 감각 훈련'], cta:'등부터 챙기면 자세도, 통증도 같이 좋아져요.' },
+  { title:'러닝 초보자가 자주 하는 실수', hook:'처음 뛸 때 다치는 이유는 대부분 정해져 있어요.',
+    points:['워밍업 없이 바로 뛰기','페이스 조절 없이 무리하게 뛰기','회복 없이 매일 뛰기'], cta:'세 가지만 피해도 부상 없이 오래 뛸 수 있어요.' },
+  { title:'근력 운동 후 회복, 뭐가 중요할까', hook:'운동만큼 중요한 게 회복이에요.',
+    points:['사용한 근육 부위 가볍게 늘려주기','수면과 단백질 챙기기','다음 운동까지 충분한 간격 두기'], cta:'회복이 잘 돼야 다음 운동도 제대로 할 수 있어요.' },
+  { title:'자세 교정, 어디서부터 시작할까', hook:'자세는 한 부위만 고친다고 좋아지지 않아요.',
+    points:['흉추 가동성 확인','골반 정렬 체크','코어와 등 근력으로 자세 유지력 만들기'], cta:'순서를 알면 자세 교정이 훨씬 빨라져요.' },
+  { title:'스트레칭, 운동 전 vs 운동 후 뭐가 다를까', hook:'언제 하느냐에 따라 스트레칭 방식이 달라져야 해요.',
+    points:['운동 전엔 동적 스트레칭(움직이며 늘리기)','운동 후엔 정적 스트레칭(가만히 늘리기)','목적에 맞게 골라 쓰기'], cta:'타이밍만 바꿔도 효과가 확 달라져요.' },
+  { title:'허리 통증, 운동으로 예방할 수 있을까', hook:'허리는 쉬는 것보다 올바르게 움직이는 게 더 도움될 때가 많아요.',
+    points:['코어 안정화 운동','고관절 가동성 늘리기(허리 대신 고관절이 움직이게)','무거운 것 들 때 자세 점검'], cta:'허리 자체보다 주변을 챙기는 게 핵심이에요.' },
+  { title:'러닝과 근력 운동, 같이 해야 하는 이유', hook:'러닝만 하면 오히려 부상 위험이 올라갈 수 있어요.',
+    points:['근력이 관절을 보호해주는 역할','하체뿐 아니라 코어·상체도 균형 있게','주 1~2회만 병행해도 효과 있음'], cta:'러닝 성과를 위해서도 근력 운동은 필수예요.' },
+  { title:'운동 습관, 왜 3주 고비를 넘기기 힘들까', hook:'작심삼일은 의지 문제가 아니라 설계 문제예요.',
+    points:['너무 큰 목표보다 작은 루틴부터','컨디션 낮은 날의 최소 기준 정해두기','기록으로 스스로 확인하기'], cta:'습관은 강도보다 꾸준함이 이겨요.' },
 ];
 function dayOfYear(d){
   const start = new Date(d.getFullYear(), 0, 0);
@@ -547,7 +594,7 @@ function topicForDate(d){
 // onlyDay가 있으면 해당 요일(getDay() 기준, 5=금요일)에만 노출된다.
 const Q1_TASKS = [
   { key:'q1_lesson',     name:'레슨 진행 / 레슨준비' },
-  { key:'q1_exlog',      name:'운동일지 업데이트', hasNote:true, notePlaceholder:'오늘 누구 운동일지 업데이트했는지 적어보세요 (예: 오은숙, 김문진)' },
+  { key:'q1_exlog',      name:'운동일지 업데이트', hasNote:true, notePlaceholder:'오늘 누구 운동일지 업데이트했는지 적어보세요' },
   { key:'q1_ot',         name:'OT 회원 수업',         onlyDay:5 },
   { key:'q1_endcontact', name:'종료(예정)회원 연락', onlyDay:5 },
 ];
@@ -1091,9 +1138,29 @@ async function renderToday(){
       item.appendChild(ta);
     }
     if(c.topicBank && !isContentOff){
+      const topic = topicForDate(today);
       const hint = document.createElement('div');
       hint.className = 'topic-hint';
-      hint.innerHTML = `<span>💡</span><span>오늘 ${cLabel} 주제: <b>${topicForDate(today)}</b></span>`;
+      hint.innerHTML = `
+        <div class="topic-hint-head">
+          <span>💡</span>
+          <span>오늘 ${cLabel} 주제: <b>${escapeHtml(topic.title)}</b></span>
+          <button type="button" class="topic-toggle" aria-expanded="false">자세히</button>
+        </div>
+        <div class="topic-detail" hidden>
+          ${topic.hook ? `<p class="topic-hook">${escapeHtml(topic.hook)}</p>` : ''}
+          <ul>${topic.points.map(p=>`<li>${escapeHtml(p)}</li>`).join('')}</ul>
+          ${topic.cta ? `<p class="topic-cta">${escapeHtml(topic.cta)}</p>` : ''}
+        </div>
+      `;
+      const toggleBtn = hint.querySelector('.topic-toggle');
+      const detail = hint.querySelector('.topic-detail');
+      toggleBtn.addEventListener('click', ()=>{
+        const expanded = toggleBtn.getAttribute('aria-expanded')==='true';
+        toggleBtn.setAttribute('aria-expanded', String(!expanded));
+        detail.hidden = expanded;
+        toggleBtn.textContent = expanded ? '자세히' : '접기';
+      });
       item.appendChild(hint);
     }
     list.appendChild(item);
