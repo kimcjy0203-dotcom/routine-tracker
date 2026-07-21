@@ -1488,9 +1488,24 @@ function openDayModal(dk){
   const planDetail = off ? '🌴 쉬는 날 (수동 설정)' : WEEK_PLAN[d.getDay()].detail;
   const isFuture = dk > dateKey(new Date());
 
+  const events = eventsForDate(dk);
+  const eventRows = events.length
+    ? events.map((e,i)=>`
+        <label class="modal-item modal-item-check">
+          <input type="checkbox" ${e.done?'checked':''} data-dk="${dk}" data-evidx="${i}">
+          <span>${escapeHtml(e.text)}</span>
+        </label>
+      `).join('')
+    : `<div class="modal-empty">등록된 일정이 없어요</div>`;
+  const eventsSection = `<div class="modal-section"><h4>일정</h4>${eventRows}</div>`;
+
   let body;
   if(isFuture){
-    body = `<div class="modal-empty">아직 오지 않은 날짜예요.</div>`;
+    body = `
+      <div class="modal-sub">${planDetail}</div>
+      ${eventsSection}
+      <div class="modal-empty">아직 오지 않은 날짜라 체크리스트는 준비 중이에요.</div>
+    `;
   } else {
     const q1Rows = Q1_TASKS
       .filter(t=> t.onlyDay===undefined || t.onlyDay===d.getDay())
@@ -1523,6 +1538,7 @@ function openDayModal(dk){
 
     body = `
       <div class="modal-sub">${planDetail} · ${rateText}</div>
+      ${eventsSection}
       <div class="modal-section"><h4>즉시 처리 · Q1</h4>${q1Rows}</div>
       <div class="modal-section"><h4>오늘의 루틴 · Q2</h4>${q2Rows}</div>
     `;
@@ -1537,7 +1553,15 @@ function openDayModal(dk){
   document.getElementById('day-modal-overlay').classList.add('active');
 
   document.querySelectorAll('#day-modal-content input[type=checkbox]').forEach(cb=>{
-    cb.addEventListener('change', ()=> toggleModalCheck(cb.dataset.dk, cb.dataset.key));
+    cb.addEventListener('change', ()=>{
+      if(cb.dataset.evidx !== undefined){
+        toggleEvent(cb.dataset.dk, Number(cb.dataset.evidx));
+        openDayModal(cb.dataset.dk);
+        renderSchedule();
+      } else {
+        toggleModalCheck(cb.dataset.dk, cb.dataset.key);
+      }
+    });
   });
 }
 async function toggleModalCheck(dk, key){
