@@ -276,6 +276,22 @@
   .book-history-item .info{ flex:1; }
   .book-history-item .info .title{ font-weight:700; }
   .book-history-item .info .meta{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .book-history-item .info .memo{ font-size:11.5px; color:var(--ink); margin-top:4px; white-space:pre-line; }
+  .book-notes-input{
+    width:100%; margin-top:12px; border:1px solid var(--line); border-radius:8px;
+    background:var(--bg); color:var(--ink); font-family:inherit; font-size:12.5px;
+    padding:8px 10px; resize:vertical; min-height:44px;
+  }
+  .book-notes-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .past-book-toggle{
+    appearance:none; border:none; cursor:pointer; background:none; color:var(--accent);
+    font-size:13px; font-weight:700; padding:0; font-family:inherit;
+  }
+  .past-book-form{ margin-top:12px; }
+  .past-book-form input[type=date]{
+    flex:1; min-width:120px; border:1px solid var(--line); background:var(--bg); color:var(--ink);
+    border-radius:8px; padding:7px 10px; font-size:12.5px; font-family:inherit;
+  }
   .topic-hint{
     flex-basis:100%; width:100%; margin-top:2px;
     background:var(--banner-info-bg); color:var(--accent);
@@ -584,6 +600,20 @@
     <div class="chart-card">
       <h3>📈 최근 6개월 완독 권수</h3>
       <canvas id="chart-books"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <button type="button" class="past-book-toggle" aria-expanded="false">➕ 예전에 읽은 책 기록 추가</button>
+      <div class="past-book-form" hidden>
+        <div class="book-new-row">
+          <input type="text" id="past-book-title" placeholder="책 제목">
+          <input type="number" id="past-book-pages" min="1" placeholder="총 페이지">
+        </div>
+        <div class="book-new-row">
+          <input type="date" id="past-book-date">
+          <button type="button" id="past-book-add-btn">추가</button>
+        </div>
+      </div>
     </div>
 
     <div class="chart-card">
@@ -1436,12 +1466,25 @@ function saveBooks(books){
 function getActiveBook(){
   return getBooks().find(b=>!b.done);
 }
+function makeBookId(){
+  return Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+}
 function addBook(title, totalPages){
   const books = getBooks();
   books.push({
-    id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    id: makeBookId(),
     title, totalPages, currentPage:0, done:false,
-    startedDate: dateKey(new Date()), finishedDate:null
+    startedDate: dateKey(new Date()), finishedDate:null, notes:'', pageLog:{}
+  });
+  saveBooks(books);
+}
+// 이미 다 읽은 책을 지난 날짜로 소급 등록할 때 사용 (예: 1월에 읽은 책을 지금 기록)
+function addFinishedBook(title, totalPages, finishedDate){
+  const books = getBooks();
+  books.push({
+    id: makeBookId(),
+    title, totalPages, currentPage: totalPages, done:true,
+    startedDate: finishedDate, finishedDate, notes:'', pageLog:{}
   });
   saveBooks(books);
 }
@@ -1450,11 +1493,29 @@ function updateBookProgress(id, currentPage){
   const b = books.find(x=>x.id===id);
   if(!b) return;
   b.currentPage = Math.max(0, Math.min(currentPage, b.totalPages));
+  if(!b.pageLog) b.pageLog = {};
+  b.pageLog[dateKey(new Date())] = b.currentPage;
   if(b.currentPage >= b.totalPages){
     b.done = true;
     b.finishedDate = dateKey(new Date());
   }
   saveBooks(books);
+}
+function updateBookNotes(id, notes){
+  const books = getBooks();
+  const b = books.find(x=>x.id===id);
+  if(!b) return;
+  b.notes = notes;
+  saveBooks(books);
+}
+// 오늘 하루 동안 진행한 페이지 수 (누적 페이지에서 어제까지 기록된 페이지를 뺀 값)
+function getBookPagesToday(book){
+  const todayKey = dateKey(new Date());
+  const log = book.pageLog || {};
+  if(log[todayKey] === undefined) return 0;
+  const priorDates = Object.keys(log).filter(d=>d<todayKey).sort();
+  const prevPage = priorDates.length ? log[priorDates[priorDates.length-1]] : 0;
+  return Math.max(0, log[todayKey]-prevPage);
 }
 function deleteBook(id){
   saveBooks(getBooks().filter(b=>b.id!==id));
@@ -2304,14 +2365,16 @@ function renderBookActiveCard(){
   const activeBook = getActiveBook();
   if(activeBook){
     const pct = activeBook.totalPages ? Math.round(activeBook.currentPage/activeBook.totalPages*100) : 0;
+    const todayPages = getBookPagesToday(activeBook);
     card.innerHTML = `
       <div class="book-title">📖 ${escapeHtml(activeBook.title)}</div>
       <div class="book-progress-bar"><div class="book-progress-fill" style="width:${pct}%"></div></div>
-      <div class="book-progress-text">${activeBook.currentPage} / ${activeBook.totalPages}페이지 · ${pct}%</div>
+      <div class="book-progress-text">${activeBook.currentPage} / ${activeBook.totalPages}페이지 · ${pct}%${todayPages>0?` · 오늘 ${todayPages}페이지 읽음 🔥`:''}</div>
       <div class="book-update-row">
         <input type="number" class="book-page-input" min="0" max="${activeBook.totalPages}" placeholder="오늘까지 읽은 페이지" value="${activeBook.currentPage || ''}">
         <button type="button" class="book-update-btn">기록</button>
       </div>
+      <textarea class="book-notes-input" placeholder="📝 생각, 인상 깊은 구절 남기기">${escapeHtml(activeBook.notes||'')}</textarea>
     `;
     card.querySelector('.book-update-btn').addEventListener('click', ()=>{
       const input = card.querySelector('.book-page-input');
@@ -2319,6 +2382,9 @@ function renderBookActiveCard(){
       if(!Number.isFinite(val) || val<0) return;
       updateBookProgress(activeBook.id, val);
       renderBooks();
+    });
+    card.querySelector('.book-notes-input').addEventListener('change', (e)=>{
+      updateBookNotes(activeBook.id, e.target.value);
     });
   } else {
     card.innerHTML = `
@@ -2372,15 +2438,33 @@ function renderBooks(){
     ? finished.map(b=>{
         const fd = b.finishedDate ? keyToDate(b.finishedDate) : null;
         const meta = fd ? `${fd.getMonth()+1}월 ${fd.getDate()}일 완독 · ${b.totalPages}페이지` : `${b.totalPages}페이지`;
+        const memo = b.notes ? `<div class="memo">📝 ${escapeHtml(b.notes)}</div>` : '';
         return `
           <div class="book-history-item">
             <span class="emoji">🎉</span>
-            <div class="info"><div class="title">${escapeHtml(b.title)}</div><div class="meta">${meta}</div></div>
+            <div class="info"><div class="title">${escapeHtml(b.title)}</div><div class="meta">${meta}</div>${memo}</div>
           </div>
         `;
       }).join('')
     : `<div class="empty">아직 완독한 책이 없어요. 첫 책을 시작해보세요 📖</div>`;
 }
+
+document.getElementById('past-book-toggle').addEventListener('click', function(){
+  const expanded = this.getAttribute('aria-expanded')==='true';
+  this.setAttribute('aria-expanded', String(!expanded));
+  document.querySelector('.past-book-form').hidden = expanded;
+});
+document.getElementById('past-book-add-btn').addEventListener('click', ()=>{
+  const title = document.getElementById('past-book-title').value.trim();
+  const pages = Number(document.getElementById('past-book-pages').value);
+  const dateVal = document.getElementById('past-book-date').value;
+  if(!title || !pages || pages<=0 || !dateVal) return;
+  addFinishedBook(title, pages, dateVal);
+  document.getElementById('past-book-title').value = '';
+  document.getElementById('past-book-pages').value = '';
+  document.getElementById('past-book-date').value = '';
+  renderBooks();
+});
 
 /* ---------------- 초기화 ---------------- */
 (async function init(){
