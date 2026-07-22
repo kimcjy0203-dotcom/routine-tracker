@@ -239,24 +239,43 @@
     font-family:inherit; font-size:12.5px; padding:8px 10px; resize:vertical; min-height:36px;
   }
   .note-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
-  .book-widget{
-    flex-basis:100%; width:100%; margin-top:2px;
-    background:var(--banner-good-bg); border-radius:10px; padding:10px 10px 12px; font-size:12.5px;
+  .books-hero{
+    display:flex; align-items:center; gap:14px; margin-bottom:18px;
+    background:var(--banner-good-bg); border-radius:18px; padding:16px 18px;
   }
-  .book-title{ font-weight:700; color:var(--good); margin-bottom:6px; }
-  .book-progress-bar{ width:100%; height:6px; border-radius:3px; background:rgba(127,127,127,0.2); overflow:hidden; }
-  .book-progress-fill{ height:100%; background:var(--good); border-radius:3px; transition: width .2s ease; }
-  .book-progress-text{ margin-top:4px; color:var(--muted); font-size:11.5px; }
-  .book-update-row, .book-new-row{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .books-hero-emoji{ font-size:36px; line-height:1; }
+  .books-hero-text h2{ margin:0 0 2px; font-size:18px; font-weight:800; color:var(--good); }
+  .books-hero-text p{ margin:0; font-size:12.5px; color:var(--muted); }
+  .book-active-card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px;
+    box-shadow:var(--card-shadow); margin-bottom:16px; font-size:12.5px;
+  }
+  .book-title{ font-weight:700; color:var(--good); margin-bottom:8px; font-size:15px; }
+  .book-progress-bar{ width:100%; height:8px; border-radius:4px; background:rgba(127,127,127,0.2); overflow:hidden; }
+  .book-progress-fill{ height:100%; background:var(--good); border-radius:4px; transition: width .2s ease; }
+  .book-progress-text{ margin-top:6px; color:var(--muted); font-size:12px; }
+  .book-update-row, .book-new-row{ display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
   .book-update-row input, .book-new-row input{
     flex:1; min-width:90px; border:1px solid var(--line); background:var(--bg); color:var(--ink);
-    border-radius:8px; padding:7px 10px; font-size:12.5px; font-family:inherit;
+    border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit;
   }
   .book-new-row .book-title-input{ flex:2; min-width:120px; }
   .book-update-row button, .book-new-row button{
     appearance:none; border:none; cursor:pointer; background:var(--good); color:#fff;
-    font-weight:700; font-size:12px; padding:7px 14px; border-radius:8px; font-family:inherit;
+    font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:8px; font-family:inherit;
   }
+  .book-empty{ text-align:center; padding:6px 0 2px; }
+  .book-empty .emoji{ font-size:34px; display:block; margin-bottom:8px; }
+  .book-empty p{ margin:0 0 4px; color:var(--muted); font-size:13px; }
+  .book-history-list{ display:flex; flex-direction:column; gap:8px; }
+  .book-history-item{
+    display:flex; align-items:center; gap:10px;
+    background:var(--bg); border-radius:12px; padding:10px 12px; font-size:13px;
+  }
+  .book-history-item .emoji{ font-size:18px; flex-shrink:0; }
+  .book-history-item .info{ flex:1; }
+  .book-history-item .info .title{ font-weight:700; }
+  .book-history-item .info .meta{ font-size:11px; color:var(--muted); margin-top:2px; }
   .topic-hint{
     flex-basis:100%; width:100%; margin-top:2px;
     background:var(--banner-info-bg); color:var(--accent);
@@ -442,6 +461,7 @@
     <button class="tab-btn active" data-tab="home">홈</button>
     <button class="tab-btn" data-tab="today">오늘 체크</button>
     <button class="tab-btn" data-tab="schedule">일정</button>
+    <button class="tab-btn" data-tab="books">독서</button>
     <button class="tab-btn" data-tab="report">월간 리포트</button>
   </nav>
 
@@ -546,10 +566,29 @@
       <h3>일별 전체 완료율 추이</h3>
       <canvas id="chart-trend"></canvas>
     </div>
+  </section>
+
+  <!-- 독서 -->
+  <section class="panel" id="panel-books">
+    <div class="books-hero">
+      <div class="books-hero-emoji">📚</div>
+      <div class="books-hero-text">
+        <h2>독서 기록</h2>
+        <p>오늘 읽은 만큼 차곡차곡 쌓여요 ✨</p>
+      </div>
+    </div>
+
+    <div id="book-active-card"></div>
+
+    <div class="stat-cards stat-cards-2" id="book-stat-cards"></div>
     <div class="chart-card">
-      <h3>독서 기록</h3>
-      <div class="stat-cards stat-cards-2" id="book-stat-cards"></div>
+      <h3>📈 최근 6개월 완독 권수</h3>
       <canvas id="chart-books"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <h3>🎉 완독한 책</h3>
+      <div id="book-history-list"></div>
     </div>
   </section>
 
@@ -570,7 +609,7 @@ const FONT_STACK = "'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-ser
 
 const CATS = [
   { key:'ritual',   name:'아침 리추얼',      desc:'감사일기 + 아침일기 · 07:00–07:10' },
-  { key:'study',    name:'독서/자격증/영어', desc:'07:10–08:00', hasNote:true, notePlaceholder:'자격증/영어 공부 내용 남기기', bookTracker:true },
+  { key:'study',    name:'독서/자격증/영어', desc:'07:10–08:00', hasNote:true, notePlaceholder:'자격증/영어 공부 내용 남기기' },
   { key:'exercise', name:'운동',             desc:'본인 운동', hasNote:true, notePlaceholder:'오늘 어떤 운동 했는지 적어보세요' },
   { key:'content',  name:'콘텐츠 제작',      desc:'인스타/블로그', topicBank:true },
 ];
@@ -1485,6 +1524,7 @@ function rerenderActivePanel(){
   if(!activeTab) return;
   if(activeTab.dataset.tab==='today') renderToday();
   else if(activeTab.dataset.tab==='schedule') renderSchedule();
+  else if(activeTab.dataset.tab==='books') renderBooks();
   else if(activeTab.dataset.tab==='report') renderReport();
 }
 
@@ -1515,6 +1555,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
     if(btn.dataset.tab==='report') renderReport();
     if(btn.dataset.tab==='schedule') renderSchedule();
+    if(btn.dataset.tab==='books') renderBooks();
   });
 });
 
@@ -1855,50 +1896,6 @@ async function renderToday(){
       ta.value = log[c.key+'Note'] || '';
       item.appendChild(ta);
     }
-    if(c.bookTracker){
-      const widget = document.createElement('div');
-      widget.className = 'book-widget';
-      const activeBook = getActiveBook();
-      if(activeBook){
-        const pct = activeBook.totalPages ? Math.round(activeBook.currentPage/activeBook.totalPages*100) : 0;
-        widget.innerHTML = `
-          <div class="book-title">📖 ${escapeHtml(activeBook.title)}</div>
-          <div class="book-progress-bar"><div class="book-progress-fill" style="width:${pct}%"></div></div>
-          <div class="book-progress-text">${activeBook.currentPage} / ${activeBook.totalPages}페이지 · ${pct}%</div>
-          <div class="book-update-row">
-            <input type="number" class="book-page-input" min="0" max="${activeBook.totalPages}" placeholder="오늘까지 읽은 페이지" value="${activeBook.currentPage || ''}">
-            <button type="button" class="book-update-btn">기록</button>
-          </div>
-        `;
-        const input = widget.querySelector('.book-page-input');
-        const btn = widget.querySelector('.book-update-btn');
-        btn.addEventListener('click', ()=>{
-          const val = Number(input.value);
-          if(!Number.isFinite(val) || val<0) return;
-          updateBookProgress(activeBook.id, val);
-          renderToday();
-        });
-      } else {
-        widget.innerHTML = `
-          <div class="book-new-row">
-            <input type="text" class="book-title-input" placeholder="읽을 책 제목">
-            <input type="number" class="book-pages-input" min="1" placeholder="총 페이지">
-            <button type="button" class="book-add-btn">시작</button>
-          </div>
-        `;
-        const titleInput = widget.querySelector('.book-title-input');
-        const pagesInput = widget.querySelector('.book-pages-input');
-        const addBtn = widget.querySelector('.book-add-btn');
-        addBtn.addEventListener('click', ()=>{
-          const title = titleInput.value.trim();
-          const pages = Number(pagesInput.value);
-          if(!title || !pages || pages<=0) return;
-          addBook(title, pages);
-          renderToday();
-        });
-      }
-      item.appendChild(widget);
-    }
     if(c.topicBank && !isContentOff){
       const topic = topicForDate(today);
       const topicText = cLabel==='블로그' ? topic.blog : topic.instagram;
@@ -2121,11 +2118,13 @@ function drawTrendChart(canvas, dayLabels, values){
 
 let lastChartData = null;
 function drawCharts(){
-  if(!lastChartData) return;
-  if(!document.getElementById('panel-report').classList.contains('active')) return;
-  drawCategoryChart(document.getElementById('chart-category'), lastChartData.catLabels, lastChartData.catData, lastChartData.catColors);
-  drawTrendChart(document.getElementById('chart-trend'), lastChartData.dayLabels, lastChartData.trendValues);
-  drawCountChart(document.getElementById('chart-books'), lastChartData.bookLabels, lastChartData.bookCounts, getCSSVar('--good'));
+  if(lastChartData && document.getElementById('panel-report').classList.contains('active')){
+    drawCategoryChart(document.getElementById('chart-category'), lastChartData.catLabels, lastChartData.catData, lastChartData.catColors);
+    drawTrendChart(document.getElementById('chart-trend'), lastChartData.dayLabels, lastChartData.trendValues);
+  }
+  if(lastBookChartData && document.getElementById('panel-books').classList.contains('active')){
+    drawCountChart(document.getElementById('chart-books'), lastBookChartData.bookLabels, lastBookChartData.bookCounts, getCSSVar('--good'));
+  }
 }
 function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 window.addEventListener('resize', debounce(drawCharts, 150));
@@ -2289,8 +2288,67 @@ async function renderReport(){
   const catData = CATS.map(c=> catTotals[c.key].total ? Math.round(catTotals[c.key].done/catTotals[c.key].total*100) : 0);
   const catColors = CATS.map(c=> getCSSVar(CAT_COLOR_VAR[c.key]));
 
-  // 독서 기록 — 이달 완독 권수/페이지 + 최근 6개월 완독 권수 추이
+  lastChartData = {
+    catLabels, catData, catColors,
+    dayLabels: dailyRates.map(r=>r.day+'일'),
+    trendValues: dailyRates.map(r=>r.rate)
+  };
+  drawCharts();
+}
+
+bindMonthNav('prev-month', 'next-month', currentReportMonth, renderReport);
+
+/* ---------------- 독서 ---------------- */
+function renderBookActiveCard(){
+  const card = document.getElementById('book-active-card');
+  const activeBook = getActiveBook();
+  if(activeBook){
+    const pct = activeBook.totalPages ? Math.round(activeBook.currentPage/activeBook.totalPages*100) : 0;
+    card.innerHTML = `
+      <div class="book-title">📖 ${escapeHtml(activeBook.title)}</div>
+      <div class="book-progress-bar"><div class="book-progress-fill" style="width:${pct}%"></div></div>
+      <div class="book-progress-text">${activeBook.currentPage} / ${activeBook.totalPages}페이지 · ${pct}%</div>
+      <div class="book-update-row">
+        <input type="number" class="book-page-input" min="0" max="${activeBook.totalPages}" placeholder="오늘까지 읽은 페이지" value="${activeBook.currentPage || ''}">
+        <button type="button" class="book-update-btn">기록</button>
+      </div>
+    `;
+    card.querySelector('.book-update-btn').addEventListener('click', ()=>{
+      const input = card.querySelector('.book-page-input');
+      const val = Number(input.value);
+      if(!Number.isFinite(val) || val<0) return;
+      updateBookProgress(activeBook.id, val);
+      renderBooks();
+    });
+  } else {
+    card.innerHTML = `
+      <div class="book-empty">
+        <span class="emoji">📗</span>
+        <p>지금 읽고 있는 책이 없어요</p>
+      </div>
+      <div class="book-new-row">
+        <input type="text" class="book-title-input" placeholder="읽을 책 제목">
+        <input type="number" class="book-pages-input" min="1" placeholder="총 페이지">
+        <button type="button" class="book-add-btn">시작</button>
+      </div>
+    `;
+    card.querySelector('.book-add-btn').addEventListener('click', ()=>{
+      const title = card.querySelector('.book-title-input').value.trim();
+      const pages = Number(card.querySelector('.book-pages-input').value);
+      if(!title || !pages || pages<=0) return;
+      addBook(title, pages);
+      renderBooks();
+    });
+  }
+}
+
+let lastBookChartData = null;
+function renderBooks(){
+  renderBookActiveCard();
+
   const books = getBooks();
+  const today = new Date();
+  const y = today.getFullYear(), m = today.getMonth();
   const monthPrefix = `${y}-${pad(m+1)}`;
   const finishedThisMonth = books.filter(b=> b.done && b.finishedDate && b.finishedDate.startsWith(monthPrefix));
   const pagesThisMonth = finishedThisMonth.reduce((sum,b)=> sum+b.totalPages, 0);
@@ -2298,6 +2356,7 @@ async function renderReport(){
     <div class="stat-card"><div class="num">${finishedThisMonth.length}권</div><div class="label">이달 완독</div></div>
     <div class="stat-card"><div class="num">${pagesThisMonth}p</div><div class="label">이달 완독 페이지</div></div>
   `;
+
   const bookLabels = [], bookCounts = [];
   for(let i=5;i>=0;i--){
     const md = new Date(y, m-i, 1);
@@ -2305,17 +2364,23 @@ async function renderReport(){
     bookLabels.push(`${md.getMonth()+1}월`);
     bookCounts.push(books.filter(b=> b.done && b.finishedDate && b.finishedDate.startsWith(prefix)).length);
   }
-
-  lastChartData = {
-    catLabels, catData, catColors,
-    dayLabels: dailyRates.map(r=>r.day+'일'),
-    trendValues: dailyRates.map(r=>r.rate),
-    bookLabels, bookCounts
-  };
+  lastBookChartData = { bookLabels, bookCounts };
   drawCharts();
-}
 
-bindMonthNav('prev-month', 'next-month', currentReportMonth, renderReport);
+  const finished = books.filter(b=>b.done).sort((a,b)=> (b.finishedDate||'').localeCompare(a.finishedDate||''));
+  document.getElementById('book-history-list').innerHTML = finished.length
+    ? finished.map(b=>{
+        const fd = b.finishedDate ? keyToDate(b.finishedDate) : null;
+        const meta = fd ? `${fd.getMonth()+1}월 ${fd.getDate()}일 완독 · ${b.totalPages}페이지` : `${b.totalPages}페이지`;
+        return `
+          <div class="book-history-item">
+            <span class="emoji">🎉</span>
+            <div class="info"><div class="title">${escapeHtml(b.title)}</div><div class="meta">${meta}</div></div>
+          </div>
+        `;
+      }).join('')
+    : `<div class="empty">아직 완독한 책이 없어요. 첫 책을 시작해보세요 📖</div>`;
+}
 
 /* ---------------- 초기화 ---------------- */
 (async function init(){
