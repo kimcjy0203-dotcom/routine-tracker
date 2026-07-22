@@ -239,6 +239,24 @@
     font-family:inherit; font-size:12.5px; padding:8px 10px; resize:vertical; min-height:36px;
   }
   .note-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .book-widget{
+    flex-basis:100%; width:100%; margin-top:2px;
+    background:var(--banner-good-bg); border-radius:10px; padding:10px 10px 12px; font-size:12.5px;
+  }
+  .book-title{ font-weight:700; color:var(--good); margin-bottom:6px; }
+  .book-progress-bar{ width:100%; height:6px; border-radius:3px; background:rgba(127,127,127,0.2); overflow:hidden; }
+  .book-progress-fill{ height:100%; background:var(--good); border-radius:3px; transition: width .2s ease; }
+  .book-progress-text{ margin-top:4px; color:var(--muted); font-size:11.5px; }
+  .book-update-row, .book-new-row{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .book-update-row input, .book-new-row input{
+    flex:1; min-width:90px; border:1px solid var(--line); background:var(--bg); color:var(--ink);
+    border-radius:8px; padding:7px 10px; font-size:12.5px; font-family:inherit;
+  }
+  .book-new-row .book-title-input{ flex:2; min-width:120px; }
+  .book-update-row button, .book-new-row button{
+    appearance:none; border:none; cursor:pointer; background:var(--good); color:#fff;
+    font-weight:700; font-size:12px; padding:7px 14px; border-radius:8px; font-family:inherit;
+  }
   .topic-hint{
     flex-basis:100%; width:100%; margin-top:2px;
     background:var(--banner-info-bg); color:var(--accent);
@@ -305,6 +323,7 @@
   .month-selector .label{ font-weight:700; font-size:16px; min-width:110px; text-align:center; font-variant-numeric:tabular-nums; }
 
   .stat-cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+  .stat-cards-2{ grid-template-columns:repeat(2,1fr); margin-bottom:14px; }
   .stat-card{
     background:var(--card); border-radius:14px; padding:14px; text-align:center;
     border:1px solid var(--line); box-shadow:var(--card-shadow);
@@ -527,6 +546,11 @@
       <h3>일별 전체 완료율 추이</h3>
       <canvas id="chart-trend"></canvas>
     </div>
+    <div class="chart-card">
+      <h3>독서 기록</h3>
+      <div class="stat-cards stat-cards-2" id="book-stat-cards"></div>
+      <canvas id="chart-books"></canvas>
+    </div>
   </section>
 
   <footer class="note">기록은 이 브라우저에만 저장돼요 · 매일 체크만 해도 데이터가 쌓여요</footer>
@@ -546,7 +570,7 @@ const FONT_STACK = "'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-ser
 
 const CATS = [
   { key:'ritual',   name:'아침 리추얼',      desc:'감사일기 + 아침일기 · 07:00–07:10' },
-  { key:'study',    name:'독서/자격증/영어', desc:'07:10–08:00' },
+  { key:'study',    name:'독서/자격증/영어', desc:'07:10–08:00', hasNote:true, notePlaceholder:'자격증/영어 공부 내용 남기기', bookTracker:true },
   { key:'exercise', name:'운동',             desc:'본인 운동', hasNote:true, notePlaceholder:'오늘 어떤 운동 했는지 적어보세요' },
   { key:'content',  name:'콘텐츠 제작',      desc:'인스타/블로그', topicBank:true },
 ];
@@ -1357,6 +1381,46 @@ function toggleEvent(dk, idx){
   saveEvents(ev);
 }
 
+/* ---------------- 독서 트래커 (책 진행 기록) ---------------- */
+let booksCache = null;
+function getBooks(){
+  if(booksCache) return booksCache;
+  try{ const raw = localStorage.getItem('books'); booksCache = raw ? JSON.parse(raw) : []; }
+  catch(e){ console.error('독서 기록 불러오기 실패', e); booksCache = []; }
+  return booksCache;
+}
+function saveBooks(books){
+  try{ localStorage.setItem('books', JSON.stringify(books)); booksCache = books; }
+  catch(e){ console.error('독서 기록 저장 실패', e); }
+  fbRoot.child('books').set(books).catch(e=>console.error('동기화 실패', e));
+}
+function getActiveBook(){
+  return getBooks().find(b=>!b.done);
+}
+function addBook(title, totalPages){
+  const books = getBooks();
+  books.push({
+    id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    title, totalPages, currentPage:0, done:false,
+    startedDate: dateKey(new Date()), finishedDate:null
+  });
+  saveBooks(books);
+}
+function updateBookProgress(id, currentPage){
+  const books = getBooks();
+  const b = books.find(x=>x.id===id);
+  if(!b) return;
+  b.currentPage = Math.max(0, Math.min(currentPage, b.totalPages));
+  if(b.currentPage >= b.totalPages){
+    b.done = true;
+    b.finishedDate = dateKey(new Date());
+  }
+  saveBooks(books);
+}
+function deleteBook(id){
+  saveBooks(getBooks().filter(b=>b.id!==id));
+}
+
 /* ---------------- 클라우드 동기화 (Firebase Realtime Database) ---------------- */
 const firebaseConfig = {
   apiKey: "AIzaSyABas4o1-banNzW68shJUIu2k52y1brlco",
@@ -1386,7 +1450,9 @@ function collectLocalSnapshot(){
   }catch(e){ console.error('로컬 스냅샷 수집 실패', e); }
   let events = {};
   try{ const raw = localStorage.getItem('events'); events = raw ? JSON.parse(raw) : {}; }catch(e){}
-  return { logs, dayoff, events };
+  let books = [];
+  try{ const raw = localStorage.getItem('books'); books = raw ? JSON.parse(raw) : []; }catch(e){}
+  return { logs, dayoff, events, books };
 }
 
 // 원격(Firebase) 데이터를 localStorage/메모리 캐시에 반영
@@ -1407,6 +1473,10 @@ function applyRemoteSnapshot(remote){
   if(remote.events){
     localStorage.setItem('events', JSON.stringify(remote.events));
     eventsCache = remote.events;
+  }
+  if(remote.books){
+    localStorage.setItem('books', JSON.stringify(remote.books));
+    booksCache = remote.books;
   }
 }
 
@@ -1785,6 +1855,50 @@ async function renderToday(){
       ta.value = log[c.key+'Note'] || '';
       item.appendChild(ta);
     }
+    if(c.bookTracker){
+      const widget = document.createElement('div');
+      widget.className = 'book-widget';
+      const activeBook = getActiveBook();
+      if(activeBook){
+        const pct = activeBook.totalPages ? Math.round(activeBook.currentPage/activeBook.totalPages*100) : 0;
+        widget.innerHTML = `
+          <div class="book-title">📖 ${escapeHtml(activeBook.title)}</div>
+          <div class="book-progress-bar"><div class="book-progress-fill" style="width:${pct}%"></div></div>
+          <div class="book-progress-text">${activeBook.currentPage} / ${activeBook.totalPages}페이지 · ${pct}%</div>
+          <div class="book-update-row">
+            <input type="number" class="book-page-input" min="0" max="${activeBook.totalPages}" placeholder="오늘까지 읽은 페이지" value="${activeBook.currentPage || ''}">
+            <button type="button" class="book-update-btn">기록</button>
+          </div>
+        `;
+        const input = widget.querySelector('.book-page-input');
+        const btn = widget.querySelector('.book-update-btn');
+        btn.addEventListener('click', ()=>{
+          const val = Number(input.value);
+          if(!Number.isFinite(val) || val<0) return;
+          updateBookProgress(activeBook.id, val);
+          renderToday();
+        });
+      } else {
+        widget.innerHTML = `
+          <div class="book-new-row">
+            <input type="text" class="book-title-input" placeholder="읽을 책 제목">
+            <input type="number" class="book-pages-input" min="1" placeholder="총 페이지">
+            <button type="button" class="book-add-btn">시작</button>
+          </div>
+        `;
+        const titleInput = widget.querySelector('.book-title-input');
+        const pagesInput = widget.querySelector('.book-pages-input');
+        const addBtn = widget.querySelector('.book-add-btn');
+        addBtn.addEventListener('click', ()=>{
+          const title = titleInput.value.trim();
+          const pages = Number(pagesInput.value);
+          if(!title || !pages || pages<=0) return;
+          addBook(title, pages);
+          renderToday();
+        });
+      }
+      item.appendChild(widget);
+    }
     if(c.topicBank && !isContentOff){
       const topic = topicForDate(today);
       const topicText = cLabel==='블로그' ? topic.blog : topic.instagram;
@@ -1903,6 +2017,47 @@ function drawCategoryChart(canvas, labels, values, colors){
   });
 }
 
+function drawCountChart(canvas, labels, values, color){
+  const {ctx, w, h} = setupCanvas(canvas, 140);
+  ctx.clearRect(0,0,w,h);
+  const ink = getCSSVar('--ink'), muted = getCSSVar('--muted'), line = getCSSVar('--line');
+  const padL = 26, padR = 8, padT = 16, padB = 26;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const base = padT + plotH;
+
+  const maxVal = Math.max(1, ...values);
+  const gridMax = Math.ceil(maxVal/2)*2 || 2;
+
+  ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.font = `500 10px ${FONT_STACK}`;
+  ctx.fillStyle = muted; ctx.textAlign='right'; ctx.textBaseline='middle';
+  [0, gridMax/2, gridMax].forEach(v=>{
+    const gy = base - (v/gridMax)*plotH;
+    ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(w-padR, gy); ctx.stroke();
+    ctx.fillText(String(Math.round(v)), padL-6, gy);
+  });
+
+  const n = labels.length;
+  if(n===0) return;
+  const slot = plotW / n;
+  const barW = Math.min(34, slot*0.55);
+  labels.forEach((lab,i)=>{
+    const val = values[i];
+    const cx = padL + slot*i + slot/2;
+    const barH = (val/gridMax)*plotH;
+    const by = base - barH;
+    ctx.fillStyle = color;
+    roundRectTop(ctx, cx-barW/2, by, barW, barH, Math.min(6, barW/2));
+    ctx.fill();
+
+    ctx.fillStyle = ink; ctx.font = `700 11px ${FONT_STACK}`; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    const labelY = (by - 6 < padT + 8) ? by + 14 : by - 6;
+    ctx.fillText(String(val), cx, labelY);
+
+    ctx.fillStyle = muted; ctx.font = `500 10px ${FONT_STACK}`;
+    ctx.fillText(lab, cx, base+16);
+  });
+}
+
 function drawTrendChart(canvas, dayLabels, values){
   const {ctx, w, h} = setupCanvas(canvas, 160);
   ctx.clearRect(0,0,w,h);
@@ -1970,6 +2125,7 @@ function drawCharts(){
   if(!document.getElementById('panel-report').classList.contains('active')) return;
   drawCategoryChart(document.getElementById('chart-category'), lastChartData.catLabels, lastChartData.catData, lastChartData.catColors);
   drawTrendChart(document.getElementById('chart-trend'), lastChartData.dayLabels, lastChartData.trendValues);
+  drawCountChart(document.getElementById('chart-books'), lastChartData.bookLabels, lastChartData.bookCounts, getCSSVar('--good'));
 }
 function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 window.addEventListener('resize', debounce(drawCharts, 150));
@@ -2133,10 +2289,28 @@ async function renderReport(){
   const catData = CATS.map(c=> catTotals[c.key].total ? Math.round(catTotals[c.key].done/catTotals[c.key].total*100) : 0);
   const catColors = CATS.map(c=> getCSSVar(CAT_COLOR_VAR[c.key]));
 
+  // 독서 기록 — 이달 완독 권수/페이지 + 최근 6개월 완독 권수 추이
+  const books = getBooks();
+  const monthPrefix = `${y}-${pad(m+1)}`;
+  const finishedThisMonth = books.filter(b=> b.done && b.finishedDate && b.finishedDate.startsWith(monthPrefix));
+  const pagesThisMonth = finishedThisMonth.reduce((sum,b)=> sum+b.totalPages, 0);
+  document.getElementById('book-stat-cards').innerHTML = `
+    <div class="stat-card"><div class="num">${finishedThisMonth.length}권</div><div class="label">이달 완독</div></div>
+    <div class="stat-card"><div class="num">${pagesThisMonth}p</div><div class="label">이달 완독 페이지</div></div>
+  `;
+  const bookLabels = [], bookCounts = [];
+  for(let i=5;i>=0;i--){
+    const md = new Date(y, m-i, 1);
+    const prefix = `${md.getFullYear()}-${pad(md.getMonth()+1)}`;
+    bookLabels.push(`${md.getMonth()+1}월`);
+    bookCounts.push(books.filter(b=> b.done && b.finishedDate && b.finishedDate.startsWith(prefix)).length);
+  }
+
   lastChartData = {
     catLabels, catData, catColors,
     dayLabels: dailyRates.map(r=>r.day+'일'),
-    trendValues: dailyRates.map(r=>r.rate)
+    trendValues: dailyRates.map(r=>r.rate),
+    bookLabels, bookCounts
   };
   drawCharts();
 }
