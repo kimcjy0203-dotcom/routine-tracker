@@ -75,7 +75,9 @@
     padding: calc(30px + env(safe-area-inset-top)) 16px calc(56px + env(safe-area-inset-bottom));
   }
 
-  header{ display:flex; flex-direction:column; gap:6px; margin-bottom:22px; }
+  header{ display:flex; align-items:center; gap:14px; margin-bottom:22px; }
+  .header-text{ display:flex; flex-direction:column; gap:6px; }
+  .brand-illustration{ width:52px; height:52px; flex-shrink:0; }
   .eyebrow{
     display:inline-flex; align-items:center; width:fit-content;
     font-family: Georgia, 'Times New Roman', serif;
@@ -132,6 +134,7 @@
   @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
 
   /* ---------- 홈: 매트릭스 ---------- */
+  .home-illustration{ display:block; width:100%; max-width:220px; height:auto; margin:0 auto 16px; }
   .axis-top{
     display:grid; grid-template-columns:1fr 1fr;
     text-align:center; font-family:'JetBrains Mono','SF Mono',monospace;
@@ -243,7 +246,7 @@
     display:flex; align-items:center; gap:14px; margin-bottom:18px;
     background:var(--banner-good-bg); border-radius:18px; padding:16px 18px;
   }
-  .books-hero-emoji{ font-size:36px; line-height:1; }
+  .books-hero-illustration{ width:64px; height:64px; flex-shrink:0; }
   .books-hero-text h2{ margin:0 0 2px; font-size:18px; font-weight:800; color:var(--good); }
   .books-hero-text p{ margin:0; font-size:12.5px; color:var(--muted); }
   .book-active-card{
@@ -468,9 +471,17 @@
 <div class="app">
 
   <header>
-    <div class="eyebrow">Routine Tracker · Himove / Hairo</div>
-    <h1>지연 루틴 트래커</h1>
-    <div class="sub">우선순위 매트릭스 기반 · 체크 · 알림 · 월간 정산</div>
+    <svg class="brand-illustration" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="30" cy="30" r="24" style="fill:var(--banner-info-bg)"/>
+      <path d="M18 30 L26 38 L42 20" style="fill:none; stroke:var(--accent); stroke-width:5; stroke-linecap:round; stroke-linejoin:round"/>
+      <circle cx="50" cy="12" r="3" style="fill:var(--good)"/>
+      <circle cx="8" cy="46" r="2.5" style="fill:var(--warn)"/>
+    </svg>
+    <div class="header-text">
+      <div class="eyebrow">Routine Tracker · Himove / Hairo</div>
+      <h1>지연 루틴 트래커</h1>
+      <div class="sub">우선순위 매트릭스 기반 · 체크 · 알림 · 월간 정산</div>
+    </div>
   </header>
 
   <nav>
@@ -483,6 +494,14 @@
 
   <!-- 홈: 매트릭스 -->
   <section class="panel active" id="panel-home">
+    <svg class="home-illustration" viewBox="0 0 140 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="10" y="10" width="55" height="32" rx="8" style="fill:var(--exercise); opacity:0.85"/>
+      <rect x="75" y="10" width="55" height="32" rx="8" style="fill:var(--study); opacity:0.85"/>
+      <rect x="10" y="50" width="55" height="32" rx="8" style="fill:var(--chore); opacity:0.6"/>
+      <rect x="75" y="50" width="55" height="32" rx="8" style="fill:var(--chore); opacity:0.4"/>
+      <path d="M20 26 L28 34 L40 18" style="fill:none; stroke:#fff; stroke-width:3.5; stroke-linecap:round; stroke-linejoin:round"/>
+      <circle cx="122" cy="18" r="4" style="fill:var(--warn)"/>
+    </svg>
     <div class="axis-top"><div>← 긴급함</div><div>긴급하지 않음 →</div></div>
     <div class="matrix-grid">
       <div class="quad" style="--quad-accent:var(--exercise)">
@@ -587,7 +606,15 @@
   <!-- 독서 -->
   <section class="panel" id="panel-books">
     <div class="books-hero">
-      <div class="books-hero-emoji">📚</div>
+      <svg class="books-hero-illustration" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="12" y="68" width="92" height="15" rx="5" style="fill:var(--content)" transform="rotate(-3 58 75)"/>
+        <rect x="16" y="53" width="84" height="15" rx="5" style="fill:var(--accent)" transform="rotate(2 58 60)"/>
+        <rect x="14" y="38" width="88" height="15" rx="5" style="fill:var(--good)" transform="rotate(-1.5 58 45)"/>
+        <path d="M28 36 Q58 24 88 36 L88 16 Q58 6 28 16 Z" style="fill:var(--card); stroke:var(--ink); stroke-width:1.4; opacity:0.95"/>
+        <line x1="58" y1="10" x2="58" y2="34" style="stroke:var(--ink); stroke-width:1; opacity:0.35"/>
+        <circle cx="100" cy="12" r="3" style="fill:var(--warn)"/>
+        <circle cx="16" cy="8" r="2.2" style="fill:var(--accent)"/>
+      </svg>
       <div class="books-hero-text">
         <h2>독서 기록</h2>
         <p>오늘 읽은 만큼 차곡차곡 쌓여요 ✨</p>
