@@ -263,6 +263,23 @@
     appearance:none; border:none; cursor:pointer; background:var(--good); color:#fff;
     font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:8px; font-family:inherit;
   }
+  .book-pause-btn{
+    appearance:none; border:none; cursor:pointer; background:none; color:var(--muted);
+    font-size:11.5px; font-weight:600; padding:10px 0 0; font-family:inherit; text-decoration:underline;
+    text-underline-offset:2px;
+  }
+  .paused-book-item{
+    display:flex; align-items:center; gap:10px;
+    background:var(--bg); border-radius:12px; padding:10px 12px; font-size:13px;
+  }
+  .paused-book-item .emoji{ font-size:18px; flex-shrink:0; }
+  .paused-book-item .info{ flex:1; }
+  .paused-book-item .info .title{ font-weight:700; }
+  .paused-book-item .info .meta{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .paused-book-item .resume-btn{
+    appearance:none; border:1px solid var(--good); cursor:pointer; background:none; color:var(--good);
+    font-size:11.5px; font-weight:700; padding:6px 12px; border-radius:980px; font-family:inherit; flex-shrink:0;
+  }
   .book-empty{ text-align:center; padding:6px 0 2px; }
   .book-empty .emoji{ font-size:34px; display:block; margin-bottom:8px; }
   .book-empty p{ margin:0 0 4px; color:var(--muted); font-size:13px; }
@@ -284,7 +301,7 @@
   .book-notes-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
   .past-book-toggle{
     appearance:none; border:none; cursor:pointer; background:none; color:var(--accent);
-    font-size:13px; font-weight:700; padding:0; font-family:inherit;
+    font-size:13px; font-weight:700; padding:0; font-family:inherit; display:block; margin-top:10px;
   }
   .past-book-form{ margin-top:12px; }
   .past-book-form input[type=date]{
@@ -596,13 +613,13 @@
 
     <div class="stat-cards stat-cards-2" id="book-stat-cards"></div>
     <div class="chart-card">
-      <h3>📈 최근 6개월 완독 권수</h3>
+      <h3>📈 올해 월별 완독 권수</h3>
       <canvas id="chart-books"></canvas>
     </div>
 
     <div class="chart-card">
       <button type="button" id="past-book-toggle" class="past-book-toggle" aria-expanded="false">➕ 예전에 읽은 책 기록 추가</button>
-      <div class="past-book-form" hidden>
+      <div class="past-book-form" id="past-book-form" hidden>
         <div class="book-new-row">
           <input type="text" id="past-book-title" placeholder="책 제목">
           <input type="number" id="past-book-pages" min="1" placeholder="총 페이지">
@@ -610,6 +627,22 @@
         <div class="book-new-row">
           <input type="date" id="past-book-date">
           <button type="button" id="past-book-add-btn">추가</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>🚩 읽다 만 책</h3>
+      <div id="paused-book-list" class="book-history-list"></div>
+      <button type="button" id="paused-book-toggle" class="past-book-toggle" aria-expanded="false">➕ 읽다 만 책 직접 추가</button>
+      <div class="past-book-form" id="paused-book-form" hidden>
+        <div class="book-new-row">
+          <input type="text" id="paused-book-title" placeholder="책 제목">
+          <input type="number" id="paused-book-total" min="1" placeholder="총 페이지">
+        </div>
+        <div class="book-new-row">
+          <input type="number" id="paused-book-current" min="0" placeholder="읽은 페이지">
+          <button type="button" id="paused-book-add-btn">추가</button>
         </div>
       </div>
     </div>
@@ -1462,7 +1495,10 @@ function saveBooks(books){
   fbRoot.child('books').set(books).catch(e=>console.error('동기화 실패', e));
 }
 function getActiveBook(){
-  return getBooks().find(b=>!b.done);
+  return getBooks().find(b=>!b.done && !b.paused);
+}
+function getPausedBooks(){
+  return getBooks().filter(b=> !b.done && b.paused);
 }
 function makeBookId(){
   return Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -1517,6 +1553,32 @@ function getBookPagesToday(book){
 }
 function deleteBook(id){
   saveBooks(getBooks().filter(b=>b.id!==id));
+}
+// 읽던 책을 "읽다 만 책"으로 표시 (진행 페이지는 그대로 유지)
+function pauseBook(id){
+  const books = getBooks();
+  const b = books.find(x=>x.id===id);
+  if(!b) return;
+  b.paused = true;
+  saveBooks(books);
+}
+function resumeBook(id){
+  const books = getBooks();
+  const b = books.find(x=>x.id===id);
+  if(!b) return;
+  b.paused = false;
+  saveBooks(books);
+}
+// 이미 읽다가 그만둔 책을 바로 등록할 때 사용
+function addPausedBook(title, totalPages, currentPage){
+  const books = getBooks();
+  const page = Math.max(0, Math.min(currentPage, totalPages));
+  books.push({
+    id: makeBookId(),
+    title, totalPages, currentPage: page, done:false, paused:true,
+    startedDate: dateKey(new Date()), finishedDate:null, notes:'', pageLog:{}
+  });
+  saveBooks(books);
 }
 
 /* ---------------- 클라우드 동기화 (Firebase Realtime Database) ---------------- */
@@ -2373,6 +2435,7 @@ function renderBookActiveCard(){
         <button type="button" class="book-update-btn">기록</button>
       </div>
       <textarea class="book-notes-input" placeholder="📝 생각, 인상 깊은 구절 남기기">${escapeHtml(activeBook.notes||'')}</textarea>
+      <button type="button" class="book-pause-btn">🚩 그만 읽기 (읽다 만 책으로)</button>
     `;
     card.querySelector('.book-update-btn').addEventListener('click', ()=>{
       const input = card.querySelector('.book-page-input');
@@ -2383,6 +2446,10 @@ function renderBookActiveCard(){
     });
     card.querySelector('.book-notes-input').addEventListener('change', (e)=>{
       updateBookNotes(activeBook.id, e.target.value);
+    });
+    card.querySelector('.book-pause-btn').addEventListener('click', ()=>{
+      pauseBook(activeBook.id);
+      renderBooks();
     });
   } else {
     card.innerHTML = `
@@ -2407,6 +2474,31 @@ function renderBookActiveCard(){
 }
 
 let lastBookChartData = null;
+// 모든 책의 pageLog를 합쳐서 날짜별 실제로 읽은 페이지 수를 계산 (누적 페이지 -> 일별 증가량)
+function getDailyPagesMap(){
+  const dailyTotals = {};
+  getBooks().forEach(b=>{
+    const log = b.pageLog || {};
+    const dates = Object.keys(log).sort();
+    let prevPage = 0;
+    dates.forEach(d=>{
+      const pagesThatDay = Math.max(0, log[d]-prevPage);
+      dailyTotals[d] = (dailyTotals[d]||0) + pagesThatDay;
+      prevPage = log[d];
+    });
+  });
+  return dailyTotals;
+}
+function computeReadingPace(){
+  const dailyMap = getDailyPagesMap();
+  const days = Object.keys(dailyMap);
+  const totalPages = days.reduce((sum,d)=> sum+dailyMap[d], 0);
+  const avgPerDay = days.length ? Math.round(totalPages/days.length) : 0;
+  const monthsSet = new Set(days.map(d=>d.slice(0,7)));
+  const avgPerMonth = monthsSet.size ? Math.round(totalPages/monthsSet.size) : 0;
+  return { avgPerDay, avgPerMonth };
+}
+
 function renderBooks(){
   renderBookActiveCard();
 
@@ -2416,20 +2508,42 @@ function renderBooks(){
   const monthPrefix = `${y}-${pad(m+1)}`;
   const finishedThisMonth = books.filter(b=> b.done && b.finishedDate && b.finishedDate.startsWith(monthPrefix));
   const pagesThisMonth = finishedThisMonth.reduce((sum,b)=> sum+b.totalPages, 0);
+  const { avgPerDay, avgPerMonth } = computeReadingPace();
   document.getElementById('book-stat-cards').innerHTML = `
     <div class="stat-card"><div class="num">${finishedThisMonth.length}권</div><div class="label">이달 완독</div></div>
     <div class="stat-card"><div class="num">${pagesThisMonth}p</div><div class="label">이달 완독 페이지</div></div>
+    <div class="stat-card"><div class="num">${avgPerDay}p</div><div class="label">읽은 날 하루 평균</div></div>
+    <div class="stat-card"><div class="num">${avgPerMonth}p</div><div class="label">월 평균 읽은 페이지</div></div>
   `;
 
   const bookLabels = [], bookCounts = [];
-  for(let i=5;i>=0;i--){
-    const md = new Date(y, m-i, 1);
-    const prefix = `${md.getFullYear()}-${pad(md.getMonth()+1)}`;
-    bookLabels.push(`${md.getMonth()+1}월`);
+  for(let mm=0; mm<=m; mm++){
+    const prefix = `${y}-${pad(mm+1)}`;
+    bookLabels.push(`${mm+1}월`);
     bookCounts.push(books.filter(b=> b.done && b.finishedDate && b.finishedDate.startsWith(prefix)).length);
   }
   lastBookChartData = { bookLabels, bookCounts };
   drawCharts();
+
+  const paused = getPausedBooks();
+  document.getElementById('paused-book-list').innerHTML = paused.length
+    ? paused.map(b=>{
+        const pct = b.totalPages ? Math.round(b.currentPage/b.totalPages*100) : 0;
+        return `
+          <div class="paused-book-item">
+            <span class="emoji">🚩</span>
+            <div class="info"><div class="title">${escapeHtml(b.title)}</div><div class="meta">${b.currentPage} / ${b.totalPages}페이지 · ${pct}%</div></div>
+            <button type="button" class="resume-btn" data-id="${b.id}">다시 읽기</button>
+          </div>
+        `;
+      }).join('')
+    : `<div class="empty">읽다 만 책이 없어요</div>`;
+  document.querySelectorAll('#paused-book-list .resume-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      resumeBook(btn.dataset.id);
+      renderBooks();
+    });
+  });
 
   const finished = books.filter(b=>b.done).sort((a,b)=> (b.finishedDate||'').localeCompare(a.finishedDate||''));
   document.getElementById('book-history-list').innerHTML = finished.length
@@ -2450,7 +2564,7 @@ function renderBooks(){
 document.getElementById('past-book-toggle').addEventListener('click', function(){
   const expanded = this.getAttribute('aria-expanded')==='true';
   this.setAttribute('aria-expanded', String(!expanded));
-  document.querySelector('.past-book-form').hidden = expanded;
+  document.getElementById('past-book-form').hidden = expanded;
 });
 document.getElementById('past-book-add-btn').addEventListener('click', ()=>{
   const title = document.getElementById('past-book-title').value.trim();
@@ -2461,6 +2575,23 @@ document.getElementById('past-book-add-btn').addEventListener('click', ()=>{
   document.getElementById('past-book-title').value = '';
   document.getElementById('past-book-pages').value = '';
   document.getElementById('past-book-date').value = '';
+  renderBooks();
+});
+
+document.getElementById('paused-book-toggle').addEventListener('click', function(){
+  const expanded = this.getAttribute('aria-expanded')==='true';
+  this.setAttribute('aria-expanded', String(!expanded));
+  document.getElementById('paused-book-form').hidden = expanded;
+});
+document.getElementById('paused-book-add-btn').addEventListener('click', ()=>{
+  const title = document.getElementById('paused-book-title').value.trim();
+  const total = Number(document.getElementById('paused-book-total').value);
+  const current = Number(document.getElementById('paused-book-current').value);
+  if(!title || !total || total<=0 || !Number.isFinite(current) || current<0) return;
+  addPausedBook(title, total, current);
+  document.getElementById('paused-book-title').value = '';
+  document.getElementById('paused-book-total').value = '';
+  document.getElementById('paused-book-current').value = '';
   renderBooks();
 });
 
