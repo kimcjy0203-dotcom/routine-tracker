@@ -394,7 +394,7 @@
   /* ---------- 일정 ---------- */
   .schedule-layout{ display:grid; grid-template-columns:1fr; gap:20px; align-items:start; }
   @media (min-width:640px){
-    .schedule-layout{ grid-template-columns:1.3fr 1fr; }
+    .schedule-layout{ grid-template-columns:1fr 1.25fr; }
     .cal-days{ margin-bottom:0; }
   }
   .cal-weekdays{
@@ -404,11 +404,11 @@
   }
   .cal-weekdays span.sun{ color:var(--warn); opacity:0.85; }
   .cal-weekdays span.sat{ color:var(--accent); opacity:0.85; }
-  .cal-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:20px; }
+  .cal-days{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:20px; }
   .cal-day{
     position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center;
-    border-radius:12px; background:var(--card); border:1px solid var(--line);
-    font-size:13px; font-weight:600; cursor:pointer; color:var(--ink);
+    border-radius:10px; background:var(--card); border:1px solid var(--line);
+    font-size:11.5px; font-weight:600; cursor:pointer; color:var(--ink);
     font-variant-numeric:tabular-nums; transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
   }
   .cal-day:not(.empty):hover{ background:var(--banner-info-bg); }
@@ -456,18 +456,23 @@
     transition: opacity .15s ease;
   }
   .event-input-row button:hover{ opacity:0.85; }
-  .event-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .event-list-heading{ font-size:12px; font-weight:700; color:var(--muted); margin-bottom:8px; }
+  .event-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; max-height:420px; overflow-y:auto; }
   .event-list li{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     background:var(--bg); border-radius:12px; padding:10px 8px 10px 12px; font-size:13px;
     border-left:3px solid var(--event-personal);
   }
   .event-list li.cat-center{ border-left-color:var(--event-center); }
+  .event-date-label{
+    font-family:'JetBrains Mono','SF Mono',monospace; font-size:10.5px; font-weight:700;
+    color:var(--muted); flex-shrink:0; min-width:52px;
+  }
   .event-list li input[type=checkbox]{
     width:18px; height:18px; flex-shrink:0; cursor:pointer;
     accent-color: var(--accent); border-radius:5px;
   }
-  .event-list li label{ flex:1; cursor:pointer; }
+  .event-list li label{ flex:1; min-width:0; cursor:pointer; }
   .event-list li.done label{ opacity:0.5; text-decoration:line-through; }
   .event-list li .del{
     appearance:none; border:none; background:none; color:var(--muted); cursor:pointer;
@@ -577,6 +582,7 @@
           <input type="text" id="event-input" placeholder="일정 입력 후 추가">
           <button id="event-add-btn">추가</button>
         </div>
+        <div class="event-list-heading" id="event-list-heading">이번 달 일정</div>
         <ul class="event-list" id="event-list"></ul>
       </div>
     </div>
@@ -2308,33 +2314,53 @@ function renderSchedule(){
   renderEventEditor();
 }
 
+// 특정 달(월) 전체의 일정을 날짜 순서대로 모아서 반환
+function getMonthEvents(monthDate){
+  const y = monthDate.getFullYear(), m = monthDate.getMonth();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const items = [];
+  for(let d=1; d<=daysInMonth; d++){
+    const dk = dateKey(new Date(y,m,d));
+    eventsForDate(dk).forEach((e,idx)=> items.push({ dk, idx, ...e }));
+  }
+  return items;
+}
+
 function renderEventEditor(){
   const dateObj = keyToDate(selectedSchedDate);
   const holidayName = getHoliday(selectedSchedDate);
   document.getElementById('event-editor-date').textContent =
-    `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${WEEKDAY_KR[dateObj.getDay()]})${holidayName?' · '+holidayName:''} 일정`;
+    `${dateObj.getMonth()+1}월 ${dateObj.getDate()}일 (${WEEKDAY_KR[dateObj.getDay()]})${holidayName?' · '+holidayName:''} 일정 추가`;
+  document.getElementById('event-list-heading').textContent =
+    `${currentSchedMonth.getMonth()+1}월 전체 일정`;
 
   const list = document.getElementById('event-list');
-  const items = eventsForDate(selectedSchedDate);
+  const items = getMonthEvents(currentSchedMonth);
   list.innerHTML = items.length
-    ? items.map((it,i)=>`
-        <li class="cat-${it.category}${it.done?' done':''}">
-          <input type="checkbox" ${it.done?'checked':''} data-idx="${i}" id="event-chk-${i}">
-          <label for="event-chk-${i}">${escapeHtml(it.text)}</label>
-          <button class="del" data-idx="${i}" aria-label="삭제">✕</button>
-        </li>
-      `).join('')
-    : `<div class="event-empty">등록된 일정이 없어요</div>`;
+    ? items.map(it=>{
+        const d = keyToDate(it.dk);
+        const dateLabel = `${d.getMonth()+1}/${d.getDate()}(${WEEKDAY_KR[d.getDay()]})`;
+        const uid = `event-chk-${it.dk}-${it.idx}`;
+        return `
+          <li class="cat-${it.category}${it.done?' done':''}">
+            <span class="event-date-label">${dateLabel}</span>
+            <input type="checkbox" ${it.done?'checked':''} data-dk="${it.dk}" data-idx="${it.idx}" id="${uid}">
+            <label for="${uid}">${escapeHtml(it.text)}</label>
+            <button class="del" data-dk="${it.dk}" data-idx="${it.idx}" aria-label="삭제">✕</button>
+          </li>
+        `;
+      }).join('')
+    : `<div class="event-empty">이번 달 등록된 일정이 없어요</div>`;
 
   list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
     cb.addEventListener('change', ()=>{
-      toggleEvent(selectedSchedDate, Number(cb.dataset.idx));
+      toggleEvent(cb.dataset.dk, Number(cb.dataset.idx));
       renderEventEditor();
     });
   });
   list.querySelectorAll('.del').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      removeEvent(selectedSchedDate, Number(btn.dataset.idx));
+      removeEvent(btn.dataset.dk, Number(btn.dataset.idx));
       renderSchedule();
     });
   });
