@@ -249,7 +249,15 @@
     background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px;
     box-shadow:var(--card-shadow); margin-bottom:16px; font-size:12.5px;
   }
-  .book-title{ font-weight:700; color:var(--good); margin-bottom:8px; font-size:15px; }
+  .book-title-row{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .book-title{ font-weight:700; color:var(--good); font-size:15px; flex:1; min-width:0; }
+  .book-edit-info-btn{
+    appearance:none; border:none; background:none; color:var(--muted); cursor:pointer;
+    font-size:12px; width:22px; height:22px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; transition: background .15s ease;
+  }
+  .book-edit-info-btn:hover{ background:rgba(127,127,127,0.18); }
+  .book-edit-info-form{ margin-bottom:10px; }
   .book-progress-bar{ width:100%; height:8px; border-radius:4px; background:rgba(127,127,127,0.2); overflow:hidden; }
   .book-progress-fill{ height:100%; background:var(--good); border-radius:4px; transition: width .2s ease; }
   .book-progress-text{ margin-top:6px; color:var(--muted); font-size:12px; }
@@ -403,7 +411,7 @@
   .cal-weekdays{
     display:grid; grid-template-columns:repeat(7,1fr); text-align:center;
     font-family:'JetBrains Mono','SF Mono',monospace; font-size:10.5px; letter-spacing:0.02em;
-    color:var(--muted); margin-bottom:10px; padding:0 2px;
+    color:var(--muted); margin-bottom:4px; padding:0 2px;
   }
   .cal-weekdays span.sun{ color:var(--warn); opacity:0.85; }
   .cal-weekdays span.sat{ color:var(--accent); opacity:0.85; }
@@ -486,11 +494,16 @@
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .event-list li.done label{ opacity:0.5; text-decoration:line-through; }
-  .event-list li .del{
+  .event-edit-input{
+    flex:1; min-width:0; border:1px solid var(--accent); background:var(--card); color:var(--ink);
+    border-radius:6px; padding:3px 6px; font-size:11.5px; font-family:inherit;
+  }
+  .event-list li .edit, .event-list li .del{
     appearance:none; border:none; background:none; color:var(--muted); cursor:pointer;
-    font-size:11px; width:18px; height:18px; border-radius:50%; flex-shrink:0;
+    font-size:11px; width:18px; height:18px; border-radius:50%; flex-shrink:0; padding:0;
     display:flex; align-items:center; justify-content:center; transition: background .15s ease, color .15s ease;
   }
+  .event-list li .edit:hover{ background:rgba(127,127,127,0.18); color:var(--accent); }
   .event-list li .del:hover{ background:rgba(127,127,127,0.18); color:var(--warn); }
   .event-empty{ font-size:11.5px; color:var(--muted); text-align:center; padding:14px 0; }
 
@@ -1501,6 +1514,14 @@ function toggleEvent(dk, idx){
   ev[dk][idx] = { ...normalized, done: !normalized.done };
   saveEvents(ev);
 }
+function editEventText(dk, idx, newText){
+  const ev = getEvents();
+  const cur = ev[dk] && ev[dk][idx];
+  if(cur === undefined) return;
+  const normalized = normalizeEvent(cur);
+  ev[dk][idx] = { ...normalized, text: newText };
+  saveEvents(ev);
+}
 
 /* ---------------- 독서 트래커 (책 진행 기록) ---------------- */
 let booksCache = null;
@@ -1561,6 +1582,16 @@ function updateBookNotes(id, notes){
   const b = books.find(x=>x.id===id);
   if(!b) return;
   b.notes = notes;
+  saveBooks(books);
+}
+// 제목/총 페이지를 잘못 입력했을 때 나중에 고칠 수 있도록
+function updateBookInfo(id, title, totalPages){
+  const books = getBooks();
+  const b = books.find(x=>x.id===id);
+  if(!b) return;
+  b.title = title;
+  b.totalPages = Math.max(1, totalPages);
+  b.currentPage = Math.min(b.currentPage, b.totalPages);
   saveBooks(books);
 }
 // 오늘 하루 동안 진행한 페이지 수 (누적 페이지에서 어제까지 기록된 페이지를 뺀 값)
@@ -2342,6 +2373,28 @@ function getMonthEvents(monthDate){
   return items;
 }
 
+// 일정 텍스트를 클릭 즉시 입력창으로 바꿔서 수정 가능하게 만듦
+function startEventEdit(labelEl, dk, idx){
+  const currentText = labelEl.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'event-edit-input';
+  input.value = currentText;
+  labelEl.replaceWith(input);
+  input.focus();
+  input.select();
+  const save = ()=>{
+    const val = input.value.trim();
+    if(val && val!==currentText) editEventText(dk, idx, val);
+    renderSchedule();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter' && !e.isComposing) input.blur();
+    else if(e.key==='Escape'){ input.removeEventListener('blur', save); renderSchedule(); }
+  });
+}
+
 function renderEventEditor(){
   const dateObj = keyToDate(selectedSchedDate);
   const holidayName = getHoliday(selectedSchedDate);
@@ -2354,7 +2407,8 @@ function renderEventEditor(){
     ? items.map((it,i)=>`
         <li class="cat-${it.category}${it.done?' done':''}">
           <input type="checkbox" ${it.done?'checked':''} data-idx="${i}" id="event-chk-${i}">
-          <label for="event-chk-${i}">${escapeHtml(it.text)}</label>
+          <label class="event-label" for="event-chk-${i}">${escapeHtml(it.text)}</label>
+          <button class="edit" data-idx="${i}" aria-label="수정">✏️</button>
           <button class="del" data-idx="${i}" aria-label="삭제">✕</button>
         </li>
       `).join('')
@@ -2365,6 +2419,12 @@ function renderEventEditor(){
       toggleEvent(selectedSchedDate, Number(cb.dataset.idx));
       renderEventEditor();
       renderMonthEventList();
+    });
+  });
+  list.querySelectorAll('.edit').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const label = btn.previousElementSibling;
+      startEventEdit(label, selectedSchedDate, Number(btn.dataset.idx));
     });
   });
   list.querySelectorAll('.del').forEach(btn=>{
@@ -2389,7 +2449,8 @@ function renderMonthEventList(){
           <li class="cat-${it.category}${it.done?' done':''}">
             <span class="event-date-label">${dateLabel}</span>
             <input type="checkbox" ${it.done?'checked':''} data-dk="${it.dk}" data-idx="${it.idx}" id="${uid}">
-            <label for="${uid}">${escapeHtml(it.text)}</label>
+            <label class="event-label" for="${uid}">${escapeHtml(it.text)}</label>
+            <button class="edit" data-dk="${it.dk}" data-idx="${it.idx}" aria-label="수정">✏️</button>
             <button class="del" data-dk="${it.dk}" data-idx="${it.idx}" aria-label="삭제">✕</button>
           </li>
         `;
@@ -2401,6 +2462,12 @@ function renderMonthEventList(){
       toggleEvent(cb.dataset.dk, Number(cb.dataset.idx));
       renderMonthEventList();
       if(cb.dataset.dk===selectedSchedDate) renderEventEditor();
+    });
+  });
+  list.querySelectorAll('.edit').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const label = btn.previousElementSibling;
+      startEventEdit(label, btn.dataset.dk, Number(btn.dataset.idx));
     });
   });
   list.querySelectorAll('.del').forEach(btn=>{
@@ -2498,7 +2565,19 @@ function renderBookActiveCard(){
     const pct = activeBook.totalPages ? Math.round(activeBook.currentPage/activeBook.totalPages*100) : 0;
     const todayPages = getBookPagesToday(activeBook);
     card.innerHTML = `
-      <div class="book-title">📖 ${escapeHtml(activeBook.title)}</div>
+      <div class="book-title-row">
+        <div class="book-title">📖 ${escapeHtml(activeBook.title)}</div>
+        <button type="button" class="book-edit-info-btn" aria-label="책 제목/총 페이지 수정">✏️</button>
+      </div>
+      <div class="book-edit-info-form" hidden>
+        <div class="book-new-row">
+          <input type="text" class="book-edit-title-input" value="${escapeHtml(activeBook.title)}">
+          <input type="number" class="book-edit-pages-input" min="1" value="${activeBook.totalPages}">
+        </div>
+        <div class="book-new-row">
+          <button type="button" class="book-edit-save-btn">저장</button>
+        </div>
+      </div>
       <div class="book-progress-bar"><div class="book-progress-fill" style="width:${pct}%"></div></div>
       <div class="book-progress-text">${activeBook.currentPage} / ${activeBook.totalPages}페이지 · ${pct}%${todayPages>0?` · 오늘 ${todayPages}페이지 읽음 🔥`:''}</div>
       <div class="book-update-row">
@@ -2520,6 +2599,16 @@ function renderBookActiveCard(){
     });
     card.querySelector('.book-pause-btn').addEventListener('click', ()=>{
       pauseBook(activeBook.id);
+      renderBooks();
+    });
+    card.querySelector('.book-edit-info-btn').addEventListener('click', ()=>{
+      card.querySelector('.book-edit-info-form').hidden = false;
+    });
+    card.querySelector('.book-edit-save-btn').addEventListener('click', ()=>{
+      const title = card.querySelector('.book-edit-title-input').value.trim();
+      const pages = Number(card.querySelector('.book-edit-pages-input').value);
+      if(!title || !pages || pages<=0) return;
+      updateBookInfo(activeBook.id, title, pages);
       renderBooks();
     });
   } else {
