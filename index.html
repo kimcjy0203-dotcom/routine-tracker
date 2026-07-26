@@ -424,7 +424,6 @@
   }
   .cal-day:not(.empty):hover{ background:var(--banner-info-bg); }
   .cal-day:not(.empty):active{ transform:scale(0.94); }
-  .cal-day.empty{ background:none; border-color:transparent; cursor:default; }
   .cal-day.sun{ color:var(--warn); }
   .cal-day.sat{ color:var(--accent); }
   .cal-day.holiday{ color:var(--warn); }
@@ -577,12 +576,20 @@
     <div class="week-strip" id="week-strip"></div>
     <div id="today-banners"></div>
 
-    <div class="section-label">즉시 처리 · Q1</div>
-    <div class="section-desc">근무시간 안에서 매일 자동 처리</div>
-    <div class="check-list" id="q1-checklist"></div>
+    <div id="rest-day-section" hidden>
+      <div class="section-label">🌿 취미 및 휴식</div>
+      <div class="section-desc">쉬는 날이에요. 하고 싶은 거 하시고, 뭐 하셨는지만 가볍게 남겨보세요</div>
+      <textarea id="rest-day-note" class="note-input" placeholder="오늘 뭐 하면서 쉬셨나요?"></textarea>
+    </div>
 
-    <div class="section-label">오늘의 루틴 · Q2</div>
-    <div class="check-list" id="today-checklist"></div>
+    <div id="workday-sections">
+      <div class="section-label">즉시 처리 · Q1</div>
+      <div class="section-desc">근무시간 안에서 매일 자동 처리</div>
+      <div class="check-list" id="q1-checklist"></div>
+
+      <div class="section-label">오늘의 루틴 · Q2</div>
+      <div class="check-list" id="today-checklist"></div>
+    </div>
   </section>
 
   <!-- 일정 -->
@@ -1414,6 +1421,28 @@ const KR_HOLIDAYS = {
   '2026-10-05': '개천절 대체공휴일',
   '2026-10-09': '한글날',
   '2026-12-25': '크리스마스',
+  '2027-01-01': '신정',
+  '2027-02-06': '설날 연휴',
+  '2027-02-07': '설날',
+  '2027-02-08': '설날 연휴',
+  '2027-02-09': '설날 대체공휴일',
+  '2027-03-01': '삼일절',
+  '2027-05-05': '어린이날',
+  '2027-05-13': '부처님오신날',
+  '2027-06-06': '현충일',
+  '2027-06-07': '현충일 대체공휴일',
+  '2027-07-17': '제헌절',
+  '2027-08-15': '광복절',
+  '2027-08-16': '광복절 대체공휴일',
+  '2027-09-14': '추석 연휴',
+  '2027-09-15': '추석',
+  '2027-09-16': '추석 연휴',
+  '2027-10-03': '개천절',
+  '2027-10-04': '개천절 대체공휴일',
+  '2027-10-09': '한글날',
+  '2027-10-11': '한글날 대체공휴일',
+  '2027-12-25': '크리스마스',
+  '2027-12-27': '크리스마스 대체공휴일',
 };
 function getHoliday(dk){ return KR_HOLIDAYS[dk]; }
 
@@ -1901,6 +1930,8 @@ async function renderToday(){
   const key = dateKey(today);
   const cLabel = contentLabel(today);
   const dayOff = isDayOff(key);
+  const isWeekend = today.getDay()===0 || today.getDay()===6;
+  const restDay = dayOff || isWeekend;
 
   document.getElementById('today-date').textContent =
     `${today.getMonth()+1}월 ${today.getDate()}일 (${WEEKDAY_KR[today.getDay()]})`;
@@ -2011,6 +2042,19 @@ async function renderToday(){
         await setLog(key, log);
       });
     });
+  }
+
+  document.getElementById('rest-day-section').hidden = !restDay;
+  document.getElementById('workday-sections').hidden = restDay;
+  if(restDay){
+    const restNote = document.getElementById('rest-day-note');
+    restNote.value = log.restNote || '';
+    restNote.addEventListener('change', async ()=>{
+      log.restNote = restNote.value;
+      logCache[key] = {...log};
+      await setLog(key, log);
+    });
+    return;
   }
 
   // Q1 (즉시 처리) 체크리스트 — onlyDay가 지정된 항목은 해당 요일에만 노출
@@ -2329,7 +2373,6 @@ function renderSchedule(){
   const ev = getEvents();
 
   const cells = [];
-  for(let i=0;i<startOffset;i++){ cells.push('<div class="cal-day empty"></div>'); }
   for(let d=1; d<=daysInMonth; d++){
     const dateObj = new Date(y,m,d);
     const dk = dateKey(dateObj);
@@ -2346,11 +2389,13 @@ function renderSchedule(){
     const holidayName = getHoliday(dk);
     const holidayClass = holidayName ? ' holiday' : '';
     const holidayAttr = holidayName ? ` title="${escapeHtml(holidayName)}"` : '';
-    cells.push(`<div class="cal-day${isToday?' today':''}${isSelected?' selected':''}${wdClass}${holidayClass}" data-date="${dk}"${holidayAttr}>${d}${dotsHTML}</div>`);
+    // 첫 주는 가짜 빈 칸 대신 grid-column-start로 시작 위치를 직접 지정 (일부 브라우저에서 aspect-ratio+빈 칸 조합이 행 높이를 잘못 계산하는 문제 회피)
+    const colStyle = (d===1 && startOffset>0) ? ` style="grid-column-start:${startOffset+1}"` : '';
+    cells.push(`<div class="cal-day${isToday?' today':''}${isSelected?' selected':''}${wdClass}${holidayClass}" data-date="${dk}"${holidayAttr}${colStyle}>${d}${dotsHTML}</div>`);
   }
   document.getElementById('cal-days').innerHTML = cells.join('');
 
-  document.querySelectorAll('#cal-days .cal-day:not(.empty)').forEach(cell=>{
+  document.querySelectorAll('#cal-days .cal-day').forEach(cell=>{
     cell.addEventListener('click', ()=>{
       selectedSchedDate = cell.dataset.date;
       renderSchedule();
