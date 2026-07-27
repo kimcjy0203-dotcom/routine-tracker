@@ -1838,6 +1838,7 @@ function openDayModal(dk){
   const cLbl = contentLabel(d);
   const planDetail = off ? '🌴 쉬는 날 (수동 설정)' : WEEK_PLAN[d.getDay()].detail;
   const isFuture = dk > dateKey(new Date());
+  const restDay = off || d.getDay()===0 || d.getDay()===6;
 
   const events = eventsForDate(dk);
   const eventRows = events.length
@@ -1857,6 +1858,15 @@ function openDayModal(dk){
       <div class="modal-sub">${planDetail}</div>
       ${eventsSection}
       <div class="modal-empty">아직 오지 않은 날짜라 체크리스트는 준비 중이에요.</div>
+    `;
+  } else if(restDay){
+    body = `
+      <div class="modal-sub">${planDetail}</div>
+      ${eventsSection}
+      <div class="modal-section">
+        <h4>메모</h4>
+        <textarea class="note-input modal-restnote" data-dk="${dk}" placeholder="쉬는 날 메모">${escapeHtml(log.restNote || '')}</textarea>
+      </div>
     `;
   } else {
     const q1Rows = Q1_TASKS
@@ -1915,6 +1925,15 @@ function openDayModal(dk){
       }
     });
   });
+  const restNoteEl = document.querySelector('#day-modal-content .modal-restnote');
+  if(restNoteEl){
+    restNoteEl.addEventListener('change', async ()=>{
+      const noteLog = { ...(logCache[restNoteEl.dataset.dk] || {}) };
+      noteLog.restNote = restNoteEl.value;
+      logCache[restNoteEl.dataset.dk] = noteLog;
+      await setLog(restNoteEl.dataset.dk, noteLog);
+    });
+  }
 }
 async function toggleModalCheck(dk, key){
   const log = { ...(logCache[dk] || {}) };
