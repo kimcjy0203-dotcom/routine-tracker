@@ -26,6 +26,7 @@
     --chore:#6E6E73;
     --event-personal:#0071E3;
     --event-center:#7C5CFC;
+    --today-grad: linear-gradient(135deg, #4FA8FF 0%, #8B7CF6 100%);
   }
   @media (prefers-color-scheme: dark){
     :root{
@@ -38,6 +39,7 @@
       --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.35);
       --ritual:#409CFF; --study:#32D74B; --exercise:#FF453A; --content:#FF9F0A; --chore:#98989D;
       --event-personal:#409CFF; --event-center:#A78BFA;
+      --today-grad: linear-gradient(135deg, #409CFF 0%, #A78BFA 100%);
     }
   }
   :root[data-theme="dark"]{
@@ -50,6 +52,7 @@
     --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.35);
     --ritual:#409CFF; --study:#32D74B; --exercise:#FF453A; --content:#FF9F0A; --chore:#98989D;
     --event-personal:#409CFF; --event-center:#A78BFA;
+    --today-grad: linear-gradient(135deg, #409CFF 0%, #A78BFA 100%);
   }
   :root[data-theme="light"]{
     --bg:#FFFFFF; --card:#F5F5F7; --ink:#1D1D1F; --line: rgba(0,0,0,0.08); --muted:#6E6E73;
@@ -61,6 +64,7 @@
     --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.06);
     --ritual:#0071E3; --study:#248A3D; --exercise:#D70015; --content:#BF5B04; --chore:#6E6E73;
     --event-personal:#0071E3; --event-center:#7C5CFC;
+    --today-grad: linear-gradient(135deg, #4FA8FF 0%, #8B7CF6 100%);
   }
   *{box-sizing:border-box;}
   body{
@@ -172,10 +176,22 @@
   .day-off-icon-btn.active{ background:var(--accent); }
 
   .week-summary{
-    display:flex; justify-content:space-between; align-items:center;
+    display:flex; flex-direction:column; gap:4px;
     font-size:12px; color:var(--muted); margin-bottom:6px; padding:0 2px;
   }
   .week-summary b{ color:var(--ink); font-weight:700; }
+  .week-summary-row{ display:flex; justify-content:space-between; align-items:center; }
+  .week-nav{ display:flex; align-items:center; gap:6px; }
+  .week-nav-btn{
+    appearance:none; border:none; cursor:pointer; background:var(--card); color:var(--ink);
+    width:22px; height:22px; border-radius:50%; font-size:12px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--line); transition: opacity .15s ease, background .15s ease;
+  }
+  .week-nav-btn:hover:not(:disabled){ background:var(--banner-info-bg); }
+  .week-nav-btn:disabled{ opacity:0.35; cursor:default; }
+  .week-nav-label{ font-weight:700; color:var(--ink); font-size:12.5px; }
+  .week-nav-range{ font-weight:400; color:var(--muted); font-size:11px; margin-left:2px; }
 
   .week-strip{ display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding:2px; }
   .week-day{
@@ -187,19 +203,23 @@
   }
   .week-day:hover{ transform:translateY(-1px); }
   .week-day:active{ transform:translateY(0); }
-  .week-day.today{ background:var(--ink); }
+  .week-day.today{
+    background:var(--today-grad); border-color:transparent;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 14px rgba(90,100,220,0.28);
+  }
   .week-day.dayoff{ opacity:0.6; }
   .week-day .wd{ font-size:11px; color:var(--muted); font-weight:600; }
-  .week-day.today .wd{ color:var(--bg); opacity:0.75; }
+  .week-day.today .wd{ color:#fff; opacity:0.85; }
   .week-day .dnum{ font-size:13px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
-  .week-day.today .dnum{ color:var(--bg); }
+  .week-day.today .dnum{ color:#fff; }
   .week-day .tag{ font-family:'JetBrains Mono','SF Mono',monospace; font-size:9.5px; font-weight:700; color:var(--accent); }
-  .week-day.today .tag{ color:var(--bg); }
+  .week-day.today .tag{ color:#fff; }
   .week-day .prog-bar{ width:100%; height:4px; border-radius:2px; background:rgba(127,127,127,0.2); overflow:hidden; margin-top:2px; }
   .week-day .prog-fill{ height:100%; border-radius:2px; }
-  .week-day.today .prog-bar{ background:rgba(255,255,255,0.22); }
+  .week-day.today .prog-bar{ background:rgba(255,255,255,0.3); }
+  .week-day.today .prog-fill{ background:#fff !important; }
   .week-day .prog{ font-size:10px; color:var(--muted); }
-  .week-day.today .prog{ color:var(--bg); opacity:0.75; }
+  .week-day.today .prog{ color:#fff; opacity:0.85; }
 
   .banner{
     border-radius:8px; padding:12px 14px; font-size:13px; margin-bottom:10px;
@@ -1778,10 +1798,11 @@ function progColor(rate){
   if(rate<50) return 'var(--warn)';
   return 'var(--accent)';
 }
+let weekOffset = 0; // 0=이번 주, -1=지난 주, -2=2주 전 ...
 function renderWeekStrip(today, todayKey, todayLog){
   const w = today.getDay();
   const daysSinceMonday = (w+6)%7; // 월요일 기준 주 시작
-  const monday = new Date(today); monday.setDate(today.getDate()-daysSinceMonday);
+  const monday = new Date(today); monday.setDate(today.getDate()-daysSinceMonday+weekOffset*7);
   const cells = [];
   let weekDone=0, weekTotal=0;
   for(let i=0;i<7;i++){
@@ -1815,9 +1836,25 @@ function renderWeekStrip(today, todayKey, todayLog){
   });
 
   const summaryEl = document.getElementById('week-summary');
-  summaryEl.innerHTML = weekTotal
-    ? `<span>이번 주 진행 <b>${weekDone}/${weekTotal}</b></span><span><b>${Math.round(weekDone/weekTotal*100)}%</b></span>`
-    : `<span>이번 주 기록이 아직 없어요</span>`;
+  const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+  const rangeText = `${monday.getMonth()+1}/${monday.getDate()} - ${sunday.getMonth()+1}/${sunday.getDate()}`;
+  const weekLabel = weekOffset===0 ? '이번 주' : weekOffset===-1 ? '지난 주' : `${-weekOffset}주 전`;
+  summaryEl.innerHTML = `
+    <div class="week-summary-row">
+      <div class="week-nav">
+        <button type="button" class="week-nav-btn" id="week-prev-btn" aria-label="이전 주 보기">‹</button>
+        <span class="week-nav-label">${weekLabel}<span class="week-nav-range">${rangeText}</span></span>
+        <button type="button" class="week-nav-btn" id="week-next-btn" aria-label="다음 주 보기" ${weekOffset>=0?'disabled':''}>›</button>
+      </div>
+      <span>${weekTotal ? `<b>${weekDone}/${weekTotal}</b> · <b>${Math.round(weekDone/weekTotal*100)}%</b>` : '기록 없음'}</span>
+    </div>
+  `;
+  document.getElementById('week-prev-btn').addEventListener('click', ()=>{
+    weekOffset--; renderWeekStrip(today, todayKey, todayLog);
+  });
+  document.getElementById('week-next-btn').addEventListener('click', ()=>{
+    if(weekOffset<0){ weekOffset++; renderWeekStrip(today, todayKey, todayLog); }
+  });
 }
 
 /* ---------------- 요일 상세 모달 ---------------- */
