@@ -26,7 +26,6 @@
     --chore:#6E6E73;
     --event-personal:#0071E3;
     --event-center:#7C5CFC;
-    --today-grad: linear-gradient(135deg, #4FA8FF 0%, #8B7CF6 100%);
   }
   @media (prefers-color-scheme: dark){
     :root{
@@ -39,7 +38,6 @@
       --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.35);
       --ritual:#409CFF; --study:#32D74B; --exercise:#FF453A; --content:#FF9F0A; --chore:#98989D;
       --event-personal:#409CFF; --event-center:#A78BFA;
-      --today-grad: linear-gradient(135deg, #409CFF 0%, #A78BFA 100%);
     }
   }
   :root[data-theme="dark"]{
@@ -52,7 +50,6 @@
     --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.35);
     --ritual:#409CFF; --study:#32D74B; --exercise:#FF453A; --content:#FF9F0A; --chore:#98989D;
     --event-personal:#409CFF; --event-center:#A78BFA;
-    --today-grad: linear-gradient(135deg, #409CFF 0%, #A78BFA 100%);
   }
   :root[data-theme="light"]{
     --bg:#FFFFFF; --card:#F5F5F7; --ink:#1D1D1F; --line: rgba(0,0,0,0.08); --muted:#6E6E73;
@@ -64,7 +61,6 @@
     --card-shadow-sm: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.06);
     --ritual:#0071E3; --study:#248A3D; --exercise:#D70015; --content:#BF5B04; --chore:#6E6E73;
     --event-personal:#0071E3; --event-center:#7C5CFC;
-    --today-grad: linear-gradient(135deg, #4FA8FF 0%, #8B7CF6 100%);
   }
   *{box-sizing:border-box;}
   body{
@@ -79,7 +75,7 @@
     padding: calc(30px + env(safe-area-inset-top)) 16px calc(56px + env(safe-area-inset-bottom));
   }
 
-  header{ display:flex; flex-direction:column; gap:6px; margin-bottom:22px; }
+  header{ display:flex; flex-direction:column; gap:6px; padding:24px 0; margin-bottom:66px; }
   h1{
     margin:0; font-size:34px; font-weight:800; letter-spacing:-0.02em;
     color:var(--ink);
@@ -90,10 +86,10 @@
     gap:2px;
     margin:18px 0 20px;
     padding:3px;
-    background:var(--card);
+    background:#000;
     border-radius:980px;
-    border:1px solid var(--line);
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.06), var(--card-shadow);
+    border:1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
   }
   nav button{
     appearance:none;
@@ -102,7 +98,7 @@
     font-family:inherit;
     font-size:13px;
     font-weight:600;
-    color:var(--muted);
+    color:rgba(255,255,255,0.5);
     padding:9px 0;
     flex:1;
     cursor:pointer;
@@ -110,9 +106,9 @@
     transition: background .18s ease, color .18s ease, box-shadow .18s ease;
   }
   nav button.active{
-    color:var(--ink);
-    background:linear-gradient(135deg, var(--banner-info-bg) 0%, var(--bg) 60%, rgba(124,92,252,0.16) 100%);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 0 0 1.5px var(--accent);
+    color:#000;
+    background:#fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
   button:focus-visible, input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 
@@ -144,22 +140,22 @@
   /* ---------- 오늘 체크 ---------- */
   .today-head{
     display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; row-gap:6px;
-    background:linear-gradient(135deg, var(--banner-info-bg) 0%, var(--bg) 55%, rgba(124,92,252,0.12) 100%);
-    color:var(--ink); border-radius:18px; padding:14px 16px; margin-bottom:14px;
-    border:1px solid var(--line); box-shadow:var(--card-shadow);
+    background:#000;
+    color:#fff; border-radius:18px; padding:14px 16px; margin-bottom:14px;
+    border:1px solid rgba(255,255,255,0.08); box-shadow:0 4px 14px rgba(0,0,0,0.3);
   }
-  .today-date{ font-weight:800; font-size:16px; }
-  .today-type{ font-family:'JetBrains Mono','SF Mono',monospace; font-size:11px; color:var(--accent); }
+  .today-date{ font-weight:800; font-size:16px; color:#fff; }
+  .today-type{ font-family:'JetBrains Mono','SF Mono',monospace; font-size:11px; color:rgba(255,255,255,0.7); }
 
   .today-head-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .day-off-icon-btn{
     appearance:none; border:none; cursor:pointer; padding:0;
     width:26px; height:26px; border-radius:50%; flex-shrink:0;
-    background:rgba(124,92,252,0.14); color:inherit; font-size:13px;
+    background:rgba(255,255,255,0.14); color:#fff; font-size:13px;
     display:flex; align-items:center; justify-content:center;
     transition: background .15s ease;
   }
-  .day-off-icon-btn.active{ background:var(--accent); }
+  .day-off-icon-btn.active{ background:#fff; color:#000; }
 
   .week-summary{
     display:flex; flex-direction:column; gap:4px;
@@ -179,33 +175,23 @@
   .week-nav-label{ font-weight:700; color:var(--ink); font-size:12.5px; }
   .week-nav-range{ font-weight:400; color:var(--muted); font-size:11px; margin-left:2px; }
 
-  .week-strip{ display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding:2px; }
+  .week-strip{ display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; padding:2px; }
   .week-day{
-    flex:1; min-width:62px; background:var(--card); border-radius:14px; padding:10px 4px 8px;
+    flex:1; min-width:48px; background:#000; border-radius:12px; padding:8px 3px 6px;
     text-align:center; display:flex; flex-direction:column; align-items:center; gap:3px;
-    border:1px solid var(--line); box-shadow:var(--card-shadow-sm);
+    border:1px solid rgba(255,255,255,0.08); box-shadow:0 2px 8px rgba(0,0,0,0.25);
     position:relative; cursor:pointer;
     transition: transform .12s ease;
   }
   .week-day:hover{ transform:translateY(-1px); }
   .week-day:active{ transform:translateY(0); }
-  .week-day.today{
-    background:var(--today-grad); border-color:transparent;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 14px rgba(90,100,220,0.28);
-  }
-  .week-day.dayoff{ opacity:0.6; }
-  .week-day .wd{ font-size:11px; color:var(--muted); font-weight:600; }
-  .week-day.today .wd{ color:#fff; opacity:0.85; }
-  .week-day .dnum{ font-size:13px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
-  .week-day.today .dnum{ color:#fff; }
-  .week-day .tag{ font-family:'JetBrains Mono','SF Mono',monospace; font-size:9.5px; font-weight:700; color:var(--accent); }
-  .week-day.today .tag{ color:#fff; }
-  .week-day .prog-bar{ width:100%; height:4px; border-radius:2px; background:rgba(127,127,127,0.2); overflow:hidden; margin-top:2px; }
+  .week-day.today{ box-shadow: 0 0 0 1.5px #fff, 0 2px 8px rgba(0,0,0,0.25); }
+  .week-day.dayoff{ opacity:0.55; }
+  .week-day .wd{ font-size:10.5px; color:rgba(255,255,255,0.55); font-weight:600; }
+  .week-day .dnum{ font-size:13px; font-weight:700; color:#fff; font-variant-numeric:tabular-nums; }
+  .week-day .prog-bar{ width:100%; height:4px; border-radius:2px; background:rgba(255,255,255,0.18); overflow:hidden; margin-top:2px; }
   .week-day .prog-fill{ height:100%; border-radius:2px; }
-  .week-day.today .prog-bar{ background:rgba(255,255,255,0.3); }
-  .week-day.today .prog-fill{ background:#fff !important; }
-  .week-day .prog{ font-size:10px; color:var(--muted); }
-  .week-day.today .prog{ color:#fff; opacity:0.85; }
+  .week-day .prog{ font-size:9.5px; color:rgba(255,255,255,0.55); }
 
   .banner{
     border-radius:8px; padding:12px 14px; font-size:13px; margin-bottom:10px;
@@ -1793,7 +1779,6 @@ function renderWeekStrip(today, todayKey, todayLog){
     const d = new Date(monday); d.setDate(monday.getDate()+i);
     const dk = dateKey(d);
     const off = isDayOff(dk);
-    const plan = off ? { tag:'휴무' } : WEEK_PLAN[d.getDay()];
     const isToday = dk===todayKey;
     let progHTML = '<span class="prog">-</span>';
     if(dk<=todayKey){
@@ -1809,7 +1794,6 @@ function renderWeekStrip(today, todayKey, todayLog){
       <div class="week-day${isToday?' today':''}${off?' dayoff':''}" data-dk="${dk}">
         <div class="wd">${WEEKDAY_KR[d.getDay()]}</div>
         <div class="dnum">${d.getDate()}</div>
-        <div class="tag">${plan.tag}</div>
         ${progHTML}
       </div>
     `);
